@@ -34,10 +34,7 @@ Match MCModel::PlayMatch() {
   std::vector<Set> sets;
 
   // Initialise score:
-  Score cur_score(cur_server, cur_returner,
-                  std::vector<std::pair<unsigned int, unsigned int>>{
-                      std::pair<unsigned int, unsigned int>(0, 0)},
-                  std::pair<unsigned int, unsigned int>(0, 0));
+  Score cur_score(cur_server, cur_returner);
 
   unsigned int target = (best_of_five_) ? 3 : 2;
 
@@ -61,13 +58,15 @@ Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
   std::vector<Game> games;
 
   // Play until the set may be over:
-  while (cur_score.server_games() < 6 && cur_score.returner_games() < 6) {
+  while (cur_score.player_games(cur_server) < 6 &&
+         cur_score.player_games(cur_returner) < 6) {
     games.push_back(PlayGame(cur_server, cur_score));
     std::swap(cur_server, cur_returner);
   }
 
   // The set has now either been won, or it is (6,5) or (5,6).
-  if (std::min(cur_score.server_games(), cur_score.returner_games()) == 5) {
+  if (std::min(cur_score.player_games(cur_server),
+               cur_score.player_games(cur_returner)) == 5) {
     games.push_back(PlayGame(cur_server, cur_score));
     std::swap(cur_server, cur_returner);
   }
@@ -75,7 +74,8 @@ Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
   Tiebreak *t;
 
   // Now we might be playing a tiebreak:
-  if (cur_score.server_games() == 6 && cur_score.returner_games() == 6) {
+  if (cur_score.player_games(cur_server) == 6 &&
+      cur_score.player_games(cur_returner) == 6) {
     t = PlayTiebreak(cur_server, cur_returner, cur_score);
     std::swap(cur_server, cur_returner);
   } else {
@@ -96,8 +96,12 @@ Tiebreak *PlayTiebreak(std::string cur_server, std::string cur_returner,
 
   std::vector<Point> points;
 
-  while (cur_score.server_points() < 7 && cur_score.returner_points() < 7) {
-    if ((cur_score.server_points() + cur_score.returner_points()) % 2 == 1) {
+  while (cur_score.player_points(cur_server) < 7 &&
+         cur_score.player_points(cur_returner) < 7) {
+    if ((cur_score.player_points(cur_server) +
+         cur_score.player_points(cur_returner)) %
+            2 ==
+        1) {
       // Change the server
       std::swap(cur_server, cur_returner);
     }
@@ -110,14 +114,19 @@ Tiebreak *PlayTiebreak(std::string cur_server, std::string cur_returner,
   }
 
   // Check if the tiebreak is over:
-  if (std::abs(cur_score.server_points() - cur_score.returner_points()) < 2) {
-    if ((cur_score.server_points() + cur_score.returner_points()) % 2 == 1) {
+  if (std::abs(cur_score.player_points(cur_server) -
+               cur_score.player_points(cur_returner)) < 2) {
+    if ((cur_score.player_points(cur_server) +
+         cur_score.player_points(cur_returner)) %
+            2 ==
+        1) {
       // Change the server
       std::swap(cur_server, cur_returner);
     }
     // Need to continue until a player has an advantage:
-    while (
-        std::abs(cur_score.server_points() - cur_score.returner_points() < 2)) {
+    while (std::abs(cur_score.player_points(cur_server) -
+                        cur_score.player_points(cur_returner) <
+                    2)) {
       Point cur_point(cur_server, cur_returner, cur_score);
       PlayPoint(cur_point);
       std::string point_winner =
@@ -136,7 +145,8 @@ ServiceGame MCModel::PlayGame(std::string cur_server, std::string cur_returner,
                               Score &cur_score) {
   std::vector<Point> points;
 
-  while (cur_score.server_points() < 4 && cur_score.returner_points() < 4) {
+  while (cur_score.player_points(cur_server) < 4 &&
+         cur_score.player_points(cur_returner) < 4) {
     Point cur_point(cur_server, cur_returner, cur_score);
     PlayPoint(cur_point);
     std::string point_winner =
@@ -146,10 +156,12 @@ ServiceGame MCModel::PlayGame(std::string cur_server, std::string cur_returner,
   }
 
   // Check if the game is over:
-  if (std::abs(cur_score.server_points() - cur_score.returner_points()) < 2) {
+  if (std::abs(cur_score.player_points(cur_server) -
+               cur_score.player_points(cur_returner)) < 2) {
     // Need to continue until a player has an advantage:
-    while (
-        std::abs(cur_score.server_points() - cur_score.returner_points() < 2)) {
+    while (std::abs(cur_score.player_points(cur_server) -
+                        cur_score.player_points(cur_returner) <
+                    2)) {
       Point cur_point(cur_server, cur_returner, cur_score);
       PlayPoint(cur_point);
       std::string point_winner =

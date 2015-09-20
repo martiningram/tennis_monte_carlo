@@ -1,26 +1,26 @@
 #ifndef SCORE_H
 #define SCORE_H
 
+#include <vector>
+
 class Score {
   std::string server_;
   std::string receiver_;
+
+  unsigned int sets_won_server_, sets_won_receiver_;
 
   std::vector<std::pair<unsigned int, unsigned int>> set_score_;
   std::pair<unsigned int, unsigned int> game_score_;
 
  public:
-  Score(std::string server, std::string receiver,
-        std::vector<std::pair<unsigned int, unsigned int>> set_score,
-        std::pair<unsigned int, unsigned int> game_score);
+  Score(std::string server, std::string receiver);
 
   void PlayerWinsPoint(std::string player);
   void PlayerWinsGame(std::string player);
   void PlayerWinsSet(std::string player);
 
-  unsigned int server_games() const;
-  unsigned int returner_games() const;
-  unsigned int server_points() const;
-  unsigned int returner_points() const;
+  unsigned int player_games(std::string player) const;
+  unsigned int player_points(std::string player) const;
 
   unsigned int sets_won(std::string player) const;
 };

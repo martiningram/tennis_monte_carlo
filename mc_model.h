@@ -1,5 +1,5 @@
-#ifndef MCMODEL_H
-#define MCMODEL_H
+#ifndef MC_MODEL_H
+#define MC_MODEL_H
 
 class MCModel {
  protected:

@@ -14,6 +14,9 @@ class ServiceGame {
  public:
   ServiceGame(std::string server, std::string returner,
               std::vector<Point> points);
+
+  std::string winner() const;
+  std::string server() const;
 };
 
 #endif
