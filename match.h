@@ -8,11 +8,19 @@
 class Match {
   std::string server_;
   std::string returner_;
+  std::string winner_;
 
   std::vector<Set> sets_;
 
+  bool best_of_five_;
+
  public:
-  Match(std::string server, std::string returner, std::vector<Set> sets);
+  Match(std::string server, std::string returner, std::vector<Set> sets,
+        bool best_of_five);
+
+  std::string final_score() const;
+
+  std::string winner() const;
 };
 
 #endif

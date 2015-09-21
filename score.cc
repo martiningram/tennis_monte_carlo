@@ -1,4 +1,5 @@
 #include "score.h"
+#include <assert.h>
 
 Score::Score(std::string server, std::string receiver)
     : server_(server),
@@ -7,7 +8,7 @@ Score::Score(std::string server, std::string receiver)
           std::pair<unsigned int, unsigned int>(0, 0)}),
       game_score_(std::pair<unsigned int, unsigned int>(0, 0)),
       sets_won_server_(0),
-      sets_won_receiver(0) {}
+      sets_won_receiver_(0) {}
 
 unsigned int Score::player_games(std::string player) const {
   if (player == server_) {
@@ -18,6 +19,7 @@ unsigned int Score::player_games(std::string player) const {
 }
 
 unsigned int Score::player_points(std::string player) const {
+  assert(player == server_ || player == receiver_);
   if (player == server_) {
     return game_score_.first;
   } else {
@@ -26,6 +28,7 @@ unsigned int Score::player_points(std::string player) const {
 }
 
 void Score::PlayerWinsPoint(std::string player) {
+  assert(player == server_ || player == receiver_);
   if (player == server_) {
     ++game_score_.first;
   } else {
@@ -47,7 +50,7 @@ void Score::PlayerWinsSet(std::string player) {
   set_score_.push_back(std::pair<unsigned int, unsigned int>(0, 0));
 
   if (player == server_) {
-    ++sets_won_server;
+    ++sets_won_server_;
   } else {
     ++sets_won_receiver_;
   }
@@ -55,10 +58,15 @@ void Score::PlayerWinsSet(std::string player) {
   game_score_ = std::pair<unsigned int, unsigned int>(0, 0);
 }
 
-unsigned int Score::sets_won(std::string player) {
+unsigned int Score::sets_won(std::string player) const {
   if (player == server_) {
     return sets_won_server_;
   } else {
     return sets_won_receiver_;
   }
+}
+
+const std::vector<std::pair<unsigned int, unsigned int>> &Score::set_score()
+    const {
+  return set_score_;
 }

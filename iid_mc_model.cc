@@ -4,12 +4,16 @@
 
 IIDMCModel::IIDMCModel(std::string p1, std::string p2, bool best_of_five,
                        std::map<std::string, double> serve_win_probs,
-                       unsigned int num_matches)
-    : MCModel(p1, p2, best_of_five, num_matches),
-      serve_win_prob_(serve_win_probs) {}
+                       unsigned int num_matches, bool verbose)
+    : MCModel(p1, p2, best_of_five, num_matches, verbose),
+      serve_win_prob_(serve_win_probs) {
+  for (unsigned int i = 0; i < kNumMatches_; ++i) {
+    matches_played_.push_back(PlayMatch());
+  }
+}
 
-virtual double IIDMCModel::ServeWinProbability(const Point &p) {
-  double win_prob = serve_win_prob_[p.server()];
+double IIDMCModel::ServeWinProbability(const Point &p) const {
+  double win_prob = (serve_win_prob_.find(p.server()))->second;
 
   return win_prob;
 }

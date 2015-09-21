@@ -2,6 +2,9 @@
 #define POINT_H
 
 #include <string>
+#include <memory>
+#include "score.h"
+#include <iostream>
 
 class Point {
   std::string server_;
@@ -9,13 +12,19 @@ class Point {
 
   Score score_;
 
-  bool *server_won_;
+  std::shared_ptr<bool> server_won_;
 
  public:
   Point(std::string server, std::string returner, Score score);
-  ~Point();
+
+  friend std::ostream &operator<<(std::ostream &, const Point &);
 
   void set_server_won(bool server_won);
+
+  bool is_break_point() const;
+  bool is_tiebreak() const;
+
+  const Score &score() const;
 
   std::string server() const;
   std::string returner() const;

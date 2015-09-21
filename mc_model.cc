@@ -1,21 +1,29 @@
 #include "mc_model.h"
-#include <random>
 #include <algorithm>
+#include "tiebreak.h"
+#include <iostream>
+#include <chrono>
 
 MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
-                 unsigned int num_matches)
-    : p1_(p1), p2_(p2), kNumMatches_(num_matches) {
-  for (unsigned int i = 0; i < kNumMatches_; ++i) {
-    matches_played_.push_back(PlayMatch());
-  }
+                 unsigned int num_matches, bool verbose)
+    : p1_(p1),
+      p2_(p2),
+      best_of_five_(best_of_five),
+      kNumMatches_(num_matches),
+      verbose_(verbose) {
+  // Seed the generator:
+  typedef std::chrono::high_resolution_clock myclock;
+  myclock::time_point beginning = myclock::now();
+  myclock::duration d = myclock::now() - beginning;
+  unsigned seed = d.count();
+  generator_.seed(seed);
 }
 
 Match MCModel::PlayMatch() {
   // Coin toss:
-  std::default_random_engine generator;
   std::uniform_int_distribution<int> distribution(0, 1);
 
-  unsigned int result = distribution(generator);
+  unsigned int result = distribution(generator_);
 
   std::string cur_server;
   std::string cur_returner;
@@ -48,26 +56,29 @@ Match MCModel::PlayMatch() {
     }
   }
 
-  return Match(server_at_start, returner_at_start, sets);
+  return Match(server_at_start, returner_at_start, sets, best_of_five_);
 }
 
 Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
                      Score &cur_score) {
   std::string server_at_start = cur_server;
   std::string returner_at_start = cur_returner;
-  std::vector<Game> games;
+  std::vector<ServiceGame> games;
 
   // Play until the set may be over:
   while (cur_score.player_games(cur_server) < 6 &&
          cur_score.player_games(cur_returner) < 6) {
-    games.push_back(PlayGame(cur_server, cur_score));
+    games.push_back(PlayGame(cur_server, cur_returner, cur_score));
+    if (verbose_) {
+      std::cout << games.back() << std::endl;
+    }
     std::swap(cur_server, cur_returner);
   }
 
   // The set has now either been won, or it is (6,5) or (5,6).
   if (std::min(cur_score.player_games(cur_server),
                cur_score.player_games(cur_returner)) == 5) {
-    games.push_back(PlayGame(cur_server, cur_score));
+    games.push_back(PlayGame(cur_server, cur_returner, cur_score));
     std::swap(cur_server, cur_returner);
   }
 
@@ -78,6 +89,9 @@ Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
       cur_score.player_games(cur_returner) == 6) {
     t = PlayTiebreak(cur_server, cur_returner, cur_score);
     std::swap(cur_server, cur_returner);
+    if (verbose_) {
+      std::cout << (*t) << std::endl;
+    }
   } else {
     // We did not play a tiebreak this set.
     t = nullptr;
@@ -89,8 +103,8 @@ Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
   return result;
 }
 
-Tiebreak *PlayTiebreak(std::string cur_server, std::string cur_returner,
-                       Score &cur_score) {
+Tiebreak *MCModel::PlayTiebreak(std::string cur_server,
+                                std::string cur_returner, Score &cur_score) {
   std::string server_at_start = cur_server;
   std::string returner_at_start = cur_returner;
 
@@ -113,9 +127,13 @@ Tiebreak *PlayTiebreak(std::string cur_server, std::string cur_returner,
     points.push_back(cur_point);
   }
 
+  auto difference = [cur_server, cur_returner](const Score &s) {
+    return std::abs(static_cast<int>(s.player_points(cur_server)) -
+                    static_cast<int>(s.player_points(cur_returner)));
+  };
+
   // Check if the tiebreak is over:
-  if (std::abs(cur_score.player_points(cur_server) -
-               cur_score.player_points(cur_returner)) < 2) {
+  if (difference(cur_score) < 2) {
     if ((cur_score.player_points(cur_server) +
          cur_score.player_points(cur_returner)) %
             2 ==
@@ -124,9 +142,7 @@ Tiebreak *PlayTiebreak(std::string cur_server, std::string cur_returner,
       std::swap(cur_server, cur_returner);
     }
     // Need to continue until a player has an advantage:
-    while (std::abs(cur_score.player_points(cur_server) -
-                        cur_score.player_points(cur_returner) <
-                    2)) {
+    while (difference(cur_score) < 2) {
       Point cur_point(cur_server, cur_returner, cur_score);
       PlayPoint(cur_point);
       std::string point_winner =
@@ -155,20 +171,19 @@ ServiceGame MCModel::PlayGame(std::string cur_server, std::string cur_returner,
     points.push_back(cur_point);
   }
 
+  auto difference = [cur_server, cur_returner](const Score &s) {
+    return std::abs(static_cast<int>(s.player_points(cur_server)) -
+                    static_cast<int>(s.player_points(cur_returner)));
+  };
+
   // Check if the game is over:
-  if (std::abs(cur_score.player_points(cur_server) -
-               cur_score.player_points(cur_returner)) < 2) {
-    // Need to continue until a player has an advantage:
-    while (std::abs(cur_score.player_points(cur_server) -
-                        cur_score.player_points(cur_returner) <
-                    2)) {
-      Point cur_point(cur_server, cur_returner, cur_score);
-      PlayPoint(cur_point);
-      std::string point_winner =
-          (cur_point.server_won()) ? (cur_server) : (cur_returner);
-      cur_score.PlayerWinsPoint(point_winner);
-      points.push_back(cur_point);
-    }
+  while (difference(cur_score) < 2) {
+    Point cur_point(cur_server, cur_returner, cur_score);
+    PlayPoint(cur_point);
+    std::string point_winner =
+        (cur_point.server_won()) ? (cur_server) : (cur_returner);
+    cur_score.PlayerWinsPoint(point_winner);
+    points.push_back(cur_point);
   }
 
   // The game is over. Update the score and construct it.
@@ -179,12 +194,9 @@ ServiceGame MCModel::PlayGame(std::string cur_server, std::string cur_returner,
 void MCModel::PlayPoint(Point &p) {
   double win_prob = ServeWinProbability(p);
 
-  std::default_random_engine generator;
   std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-  bool won = (distribution(generator) <= win_prob);
+  bool won = (distribution(generator_) <= win_prob);
 
   p.set_server_won(won);
-
-  return won;
 }
