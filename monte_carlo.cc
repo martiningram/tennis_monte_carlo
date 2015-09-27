@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include "model_data.h"
 
 void test_win_prob() {
   std::string p1("Roger Federer");
@@ -13,7 +14,7 @@ void test_win_prob() {
 
   std::ofstream o;
 
-  o.open("probability_non_iid_bo3_curve.csv");
+  o.open("probability_iid_bo3_curve.csv");
 
   o << "p1"
     << ","
@@ -35,7 +36,7 @@ void test_win_prob() {
 
     unsigned int num_matches = 50000;
 
-    AdjustedMCModel m(p1, p2, false, probs, 0.26, num_matches);
+    AdjustedMCModel m(p1, p2, false, probs, 0, num_matches);
 
     const std::vector<Match> matches = m.matches();
 
@@ -55,6 +56,8 @@ void test_win_prob() {
   o.close();
 }
 
+void test_model() { ModelData::ImportFromFile("atp_points_predicted.csv"); }
+
 void verbose_test() {
   std::string p1("Roger Federer");
   std::string p2("Rafael Nadal");
@@ -69,4 +72,4 @@ void verbose_test() {
   AdjustedMCModel m(p1, p2, true, probs, 0.26, num_matches, true);
 }
 
-int main() { test_win_prob(); }
+int main() { test_model(); }

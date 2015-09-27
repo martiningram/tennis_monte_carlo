@@ -1,4 +1,4 @@
-OBJ = iid_mc_model.o match.o mc_model.o monte_carlo.o point.o score.o service_game.o set.o tiebreak.o adjusted_mc_model.o
+OBJ = iid_mc_model.o match.o mc_model.o monte_carlo.o point.o score.o service_game.o set.o tiebreak.o adjusted_mc_model.o model_data.o
 executable = monte_carlo
 GCC = g++
 CFLAGS = -Wall -O3 -g -std=c++11 -MMD
