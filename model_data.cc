@@ -29,6 +29,8 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     std::string opponent;
   };
 
+  std::vector<ModelData> results;
+
   std::map<std::string, std::map<std::string, PlayerMatchData>> data;
 
   // need to skip first line:
@@ -70,7 +72,10 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     // Returning match:
     std::getline(iss, cur_match, ',');
 
-    std::cout << cur_match << std::endl;
+    // Need to cut off the last name to have match name. Find colon:
+
+    std::size_t last_char = cur_match.rfind(':');
+    cur_match = cur_match.substr(0, last_char);
 
     double probability;
     double probability_iid;
@@ -90,10 +95,35 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
   }
 
   // Go through each match
-  for (const std::pair<std::string, std::map<std::string, PlayerMatchData>> &p :
+  for (std::pair<const std::string, std::map<std::string, PlayerMatchData>> &p :
        data) {
-    std::cout << p.second.size() << std::endl;
     // There should be exactly two results each time
     assert(p.second.size() == 2);
+
+    // Construct the ModelData object
+    auto map_it = p.second.begin();
+    std::string p1 = map_it->first;
+    ++map_it;
+    std::string p2 = map_it->first;
+
+    const PlayerMatchData &p1_data = p.second[p1];
+    const PlayerMatchData &p2_data = p.second[p2];
+
+    ModelData cur_data(p1, p2, p.first, p1_data.non_iid, p2_data.non_iid,
+                       p1_data.iid, p2_data.iid);
+
+    // Uncomment to print (and check):
+
+    /*std::cout << p1 << " vs. " << p2 << std::endl;*/
+
+    // for (auto pr : p1_data.non_iid) {
+    // for (auto val : pr.first) {
+    // std::cout << val << " ";
+    //}
+    // std::cout << ", " << pr.second << std::endl;
+    /*}*/
+
+    results.emplace_back(cur_data);
   }
+  return results;
 }

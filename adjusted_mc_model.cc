@@ -1,9 +1,7 @@
 #include "adjusted_mc_model.h"
 
 AdjustedMCModel::AdjustedMCModel(std::string p1, std::string p2,
-                                 bool best_of_five,
-                                 std::map<std::string, double> iid_probs,
-                                 double non_iid_strength,
+                                 bool best_of_five, const ModelData &data,
                                  unsigned int num_matches, bool verbose)
     : MCModel(p1, p2, best_of_five, num_matches, verbose),
       iid_probs_(iid_probs),
