@@ -24,6 +24,13 @@ class ModelData {
             std::map<std::array<bool, 5>, double> model_probs_p2,
             double p1_iid_, double p2_iid);
 
+  double ServeWinProbabilityNonIID(std::string player,
+                                   std::array<bool, 5> point_type) const;
+
+  double ServeWinProbabilityIID(std::string player) const;
+
+  std::string p1() const;
+  std::string p2() const;
   static std::vector<ModelData> ImportFromFile(std::string csv_file);
 };
 

@@ -16,6 +16,36 @@ ModelData::ModelData(std::string p1, std::string p2, std::string match_title,
       p1_iid_(p1_iid),
       p2_iid_(p2_iid) {}
 
+std::string ModelData::p1() const { return p1_; }
+
+std::string ModelData::p2() const { return p2_; }
+
+double ModelData::ServeWinProbabilityNonIID(
+    std::string player, std::array<bool, 5> point_type) const {
+  assert(player == p1_ || player == p2_);
+  std::map<std::array<bool, 5>, double> const *relevant_map;
+
+  if (player == p1_) {
+    relevant_map = &model_probabilities_p1_;
+  } else {
+    relevant_map = &model_probabilities_p2_;
+  }
+
+  auto it = relevant_map->find(point_type);
+  assert(it != relevant_map->end());
+  return it->second;
+}
+
+double ModelData::ServeWinProbabilityIID(std::string player) const {
+  assert(player == p1_ || player == p2_);
+
+  if (player == p1_) {
+    return p1_iid_;
+  } else {
+    return p2_iid_;
+  }
+}
+
 std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
   std::ifstream i;
   i.open(csv_file);

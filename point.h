@@ -23,6 +23,9 @@ class Point {
 
   bool is_break_point() const;
   bool is_tiebreak() const;
+  bool is_point_before_bp() const;
+  bool is_set_up() const;
+  bool is_set_down() const;
 
   const Score &score() const;
 

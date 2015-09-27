@@ -6,70 +6,44 @@
 #include <iostream>
 #include "model_data.h"
 
-void test_win_prob() {
-  std::string p1("Roger Federer");
-  std::string p2("Rafael Nadal");
+void test_model() {
+  std::vector<ModelData> m =
+      ModelData::ImportFromFile("atp_points_predicted.csv");
 
-  std::map<std::string, double> probs;
+  for (const ModelData &test : m) {
+    bool bo5 = true;
 
-  std::ofstream o;
+    const unsigned int kSimulations = 10000;
 
-  o.open("probability_iid_bo3_curve.csv");
+    AdjustedMCModel adj(test.p1(), test.p2(), bo5, test, kSimulations);
 
-  o << "p1"
-    << ","
-    << "p2"
-    << ","
-    << "pwin" << std::endl;
+    std::map<std::string, double> iid_probs;
 
-  probs[p2] = 0.6;
-  probs[p1] = 0.6;
+    iid_probs[test.p1()] = test.ServeWinProbabilityIID(test.p1());
+    iid_probs[test.p2()] = test.ServeWinProbabilityIID(test.p2());
 
-  unsigned int max_step = 100;
+    IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 
-  for (unsigned int i = 0; i < max_step; ++i) {
-    probs[p1] = i * 0.01;
+    const std::vector<Match> &matches = adj.matches();
+    const std::vector<Match> &iid_matches = iid_model.matches();
 
-    std::cout << "On step " << i << " of " << max_step << std::endl;
+    unsigned int i = std::count_if(
+        matches.begin(), matches.end(),
+        [test](const Match &m) { return m.winner() == test.p1(); });
 
-    o << probs[p1] << "," << probs[p2] << ",";
+    unsigned int iid_i = std::count_if(
+        iid_matches.begin(), iid_matches.end(),
+        [test](const Match &m) { return m.winner() == test.p1(); });
 
-    unsigned int num_matches = 50000;
-
-    AdjustedMCModel m(p1, p2, false, probs, 0, num_matches);
-
-    const std::vector<Match> matches = m.matches();
-
-    unsigned int num_won_p1 =
-        std::count_if(matches.begin(), matches.end(),
-                      [p1](const Match &m) { return m.winner() == p1; });
-
-    double fraction_won = static_cast<float>(num_won_p1) / num_matches;
-
-    o << fraction_won << std::endl;
-
-    /*  for (const Match &match : matches) {*/
-    // std::cout << match.final_score() << std::endl;
-    /*}*/
+    std::cout << "Match of " << test.p1() << " against " << test.p2()
+              << std::endl;
+    std::cout << "IID probability: "
+              << (iid_i / static_cast<double>(kSimulations)) * 100 << "%"
+              << std::endl;
+    std::cout << "Non-IID probability: "
+              << (i / static_cast<double>(kSimulations)) * 100 << "%"
+              << std::endl;
   }
-
-  o.close();
-}
-
-void test_model() { ModelData::ImportFromFile("atp_points_predicted.csv"); }
-
-void verbose_test() {
-  std::string p1("Roger Federer");
-  std::string p2("Rafael Nadal");
-
-  std::map<std::string, double> probs;
-
-  probs[p2] = 0.5;
-  probs[p1] = 0.4;
-
-  unsigned int num_matches = 1;
-
-  AdjustedMCModel m(p1, p2, true, probs, 0.26, num_matches, true);
 }
 
 int main() { test_model(); }

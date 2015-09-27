@@ -1,16 +1,19 @@
 #ifndef ADJUSTED_MC_MODEL_H
 #define ADJUSTED_MC_MODEL_H
 
+#include <map>
+
 #include "mc_model.h"
 #include "model_data.h"
-#include <map>
 
 class AdjustedMCModel : public MCModel {
   double ServeWinProbability(const Point &p) const;
 
-  mutable std::map<std::string, double> iid_probs_;
+  ModelData data_;
 
   double non_iid_strength_;
+
+  std::array<bool, 5> IdentifyPoint(const Point &p) const;
 
  public:
   AdjustedMCModel(std::string p1, std::string p2, bool best_of_five,

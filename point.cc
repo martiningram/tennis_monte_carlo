@@ -34,6 +34,33 @@ bool Point::is_tiebreak() const {
           score_.player_games(returner_) == 6);
 }
 
+bool Point::is_point_before_bp() const {
+  if (is_tiebreak()) {
+    return false;
+  }
+
+  else {
+    // 0-30, 15-30 or 30-30:
+    bool before_deuce = (score_.player_points(returner_) == 2 &&
+                         score_.player_points(server_) <= 2);
+
+    // 40-40:
+    bool deuce =
+        score_.player_points(returner_) > 2 &&
+        score_.player_points(returner_) == score_.player_points(server_);
+
+    return before_deuce || deuce;
+  }
+}
+
+bool Point::is_set_up() const {
+  return (score_.sets_won(server_) > score_.sets_won(returner_));
+}
+
+bool Point::is_set_down() const {
+  return (score_.sets_won(server_) < score_.sets_won(returner_));
+}
+
 bool Point::is_break_point() const {
   if (is_tiebreak()) {
     return false;
