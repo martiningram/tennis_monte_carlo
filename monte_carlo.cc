@@ -14,40 +14,91 @@ void test_model() {
 
   o.open("iid_vs_non_iid.csv");
 
-  for (const ModelData &test : m) {
+  o << "Player 1"
+    << ","
+    << "Player 2"
+    << ","
+    << "Match title"
+    << ","
+    << "p_win_iid"
+    << ","
+    << "p_win_dynamic"
+    << ","
+    << "average_sets"
+    << ","
+    << "average_sets_iid"
+    << ","
+    << "average_games"
+    << ","
+    << "average_games_iid" << std::endl;
+
+  for (const ModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 10000;
+    const unsigned int kSimulations = 1E5;
 
-    AdjustedMCModel adj(test.p1(), test.p2(), bo5, test, kSimulations);
+    AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
+                        kSimulations);
 
     std::map<std::string, double> iid_probs;
 
-    iid_probs[test.p1()] = test.ServeWinProbabilityIID(test.p1());
-    iid_probs[test.p2()] = test.ServeWinProbabilityIID(test.p2());
+    iid_probs[cur_match.p1()] =
+        cur_match.ServeWinProbabilityIID(cur_match.p1());
+    iid_probs[cur_match.p2()] =
+        cur_match.ServeWinProbabilityIID(cur_match.p2());
 
-    IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
+    IIDMCModel iid_model(cur_match.p1(), cur_match.p2(), bo5, iid_probs,
+                         kSimulations);
 
     const std::vector<Match> &matches = adj.matches();
     const std::vector<Match> &iid_matches = iid_model.matches();
 
     unsigned int i = std::count_if(
         matches.begin(), matches.end(),
-        [test](const Match &m) { return m.winner() == test.p1(); });
+        [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
 
     unsigned int iid_i = std::count_if(
         iid_matches.begin(), iid_matches.end(),
-        [test](const Match &m) { return m.winner() == test.p1(); });
+        [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
 
-    std::cout << "Match of " << test.p1() << " against " << test.p2()
+    unsigned int set_sum = 0;
+    unsigned int set_sum_iid = 0;
+
+    unsigned int game_sum = 0;
+    unsigned int game_sum_iid = 0;
+
+    for (unsigned int i = 0; i < kSimulations; ++i) {
+      set_sum += matches[i].sets().size();
+      set_sum_iid += iid_matches[i].sets().size();
+      game_sum += matches[i].total_games();
+      game_sum_iid += iid_matches[i].total_games();
+    }
+
+    double average_sets = set_sum / static_cast<double>(kSimulations);
+    double average_sets_iid = set_sum_iid / static_cast<double>(kSimulations);
+
+    double average_games = game_sum / static_cast<double>(kSimulations);
+    double average_games_iid = game_sum_iid / static_cast<double>(kSimulations);
+
+    double iid_win_prob = (iid_i / static_cast<double>(kSimulations));
+    double non_iid_win_prob = (i / static_cast<double>(kSimulations));
+
+    std::cout << "Match of " << cur_match.p1() << " against " << cur_match.p2()
               << std::endl;
-    std::cout << "IID probability: "
-              << (iid_i / static_cast<double>(kSimulations)) * 100 << "%"
+    std::cout << "IID probability: " << iid_win_prob * 100 << "%" << std::endl;
+    std::cout << "Non-IID probability: " << non_iid_win_prob * 100 << "%"
               << std::endl;
-    std::cout << "Non-IID probability: "
-              << (i / static_cast<double>(kSimulations)) * 100 << "%"
-              << std::endl;
+    std::cout << "IID sets: " << average_sets_iid
+              << "; non-IID: " << average_sets << std::endl;
+    std::cout << "IID games: " << average_games_iid
+              << "; non-IID: " << average_games << std::endl;
+
+    o << cur_match.p1() << "," << cur_match.p2() << ","
+      << cur_match.match_title() << "," << iid_win_prob << ","
+      << non_iid_win_prob << "," << average_sets << "," << average_sets_iid
+      << "," << average_games << "," << average_games_iid << std::endl;
   }
+  o.close();
 }
 
 void verbose_test_run() {
@@ -70,4 +121,4 @@ void verbose_test_run() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { verbose_test_run(); }
+int main() { test_model(); }

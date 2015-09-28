@@ -41,3 +41,13 @@ std::string Match::final_score() const {
 }
 
 std::string Match::winner() const { return sets_.back().winner(); }
+
+const std::vector<Set> &Match::sets() const { return sets_; }
+
+unsigned int Match::total_games() const {
+  unsigned int sum = 0;
+  for (const Set &s : sets_) {
+    sum += s.final_score().first + s.final_score().second;
+  }
+  return sum;
+}

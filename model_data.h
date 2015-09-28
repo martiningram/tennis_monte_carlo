@@ -31,6 +31,7 @@ class ModelData {
 
   std::string p1() const;
   std::string p2() const;
+  std::string match_title() const;
   static std::vector<ModelData> ImportFromFile(std::string csv_file);
 };
 

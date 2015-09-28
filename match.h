@@ -20,6 +20,10 @@ class Match {
 
   std::string final_score() const;
 
+  const std::vector<Set> &sets() const;
+
+  unsigned int total_games() const;
+
   std::string winner() const;
 };
 

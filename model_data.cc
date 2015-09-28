@@ -1,8 +1,10 @@
-#include "model_data.h"
 #include <fstream>
 #include <iostream>
 #include <assert.h>
 #include <sstream>
+
+#include "model_data.h"
+#include "tools.h"
 
 ModelData::ModelData(std::string p1, std::string p2, std::string match_title,
                      std::map<std::array<bool, 5>, double> model_probs_p1,
@@ -19,6 +21,8 @@ ModelData::ModelData(std::string p1, std::string p2, std::string match_title,
 std::string ModelData::p1() const { return p1_; }
 
 std::string ModelData::p2() const { return p2_; }
+
+std::string ModelData::match_title() const { return match_title_; }
 
 double ModelData::ServeWinProbabilityNonIID(
     std::string player, std::array<bool, 5> point_type) const {
@@ -96,11 +100,14 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     cur_line[4] = (set_down == "1");
 
     std::getline(iss, cur_player, ',');
+    Tools::Trim(cur_player, '"');
     std::getline(iss, cur_opponent, ',');
+    Tools::Trim(cur_opponent, '"');
     std::getline(iss, cur_match, ',');
 
     // Returning match:
     std::getline(iss, cur_match, ',');
+    Tools::Trim(cur_match, '"');
 
     // Need to cut off the last name to have match name. Find colon:
 
