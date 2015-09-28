@@ -10,6 +10,10 @@ void test_model() {
   std::vector<ModelData> m =
       ModelData::ImportFromFile("atp_points_predicted.csv");
 
+  std::ofstream o;
+
+  o.open("iid_vs_non_iid.csv");
+
   for (const ModelData &test : m) {
     bool bo5 = true;
 
@@ -46,4 +50,24 @@ void test_model() {
   }
 }
 
-int main() { test_model(); }
+void verbose_test_run() {
+  std::vector<ModelData> m =
+      ModelData::ImportFromFile("atp_points_predicted.csv");
+
+  ModelData test = m[0];
+
+  bool bo5 = true;
+
+  const unsigned int kSimulations = 1;
+
+  AdjustedMCModel adj(test.p1(), test.p2(), bo5, test, kSimulations, true);
+
+  std::map<std::string, double> iid_probs;
+
+  iid_probs[test.p1()] = test.ServeWinProbabilityIID(test.p1());
+  iid_probs[test.p2()] = test.ServeWinProbabilityIID(test.p2());
+
+  IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
+}
+
+int main() { verbose_test_run(); }

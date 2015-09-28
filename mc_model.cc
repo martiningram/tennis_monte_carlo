@@ -100,6 +100,10 @@ Set MCModel::PlaySet(std::string cur_server, std::string cur_returner,
   Set result(server_at_start, returner_at_start, games, t);
   cur_score.PlayerWinsSet(result.winner());
 
+  if (verbose_) {
+    std::cout << result.winner() << " wins a set." << std::endl;
+  }
+
   return result;
 }
 
