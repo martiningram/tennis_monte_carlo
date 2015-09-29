@@ -24,6 +24,10 @@ void test_model() {
     << ","
     << "p_win_dynamic"
     << ","
+    << "p1_spw_iid"
+    << ","
+    << "p2_spw_iid"
+    << ","
     << "average_sets"
     << ","
     << "average_sets_iid"
@@ -95,8 +99,11 @@ void test_model() {
 
     o << cur_match.p1() << "," << cur_match.p2() << ","
       << cur_match.match_title() << "," << iid_win_prob << ","
-      << non_iid_win_prob << "," << average_sets << "," << average_sets_iid
-      << "," << average_games << "," << average_games_iid << std::endl;
+      << non_iid_win_prob << ","
+      << cur_match.ServeWinProbabilityIID(cur_match.p1()) << ","
+      << cur_match.ServeWinProbabilityIID(cur_match.p2()) << "," << average_sets
+      << "," << average_sets_iid << "," << average_games << ","
+      << average_games_iid << std::endl;
   }
   o.close();
 }
@@ -105,7 +112,7 @@ void verbose_test_run() {
   std::vector<ModelData> m =
       ModelData::ImportFromFile("atp_points_predicted.csv");
 
-  ModelData test = m[0];
+  ModelData test = m[2];
 
   bool bo5 = true;
 
