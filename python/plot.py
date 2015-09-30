@@ -1,6 +1,6 @@
 import pandas as pd
-import plotly.plotly as py
-from plotly.graph_objs import *
+# import plotly.plotly as py
+# from plotly.graph_objs import *
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -43,6 +43,19 @@ def plot_iid_vs_non_iid(df):
 
     fig = Figure(data=data, layout=layout)
     plot_url = py.plot(fig, filename = 'non-iid-effect-coin')
+
+def explore_detailed_data():
+    df = pd.read_csv('match_one.csv')
+
+    p1 = df[df["serving"] == "Adrian Mannarino"]
+
+    print(p1.columns)
+
+    deviations = p1["p_noniid"] - p1["p_iid"]
+
+
+explore_detailed_data()
+exit();
 
 df = pd.read_csv('iid_vs_non_iid_fixed_coin.csv')
 
