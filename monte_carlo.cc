@@ -41,7 +41,7 @@ void test_model() {
   for (const ModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E5;
+    const unsigned int kSimulations = 1E4;
 
     AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                         kSimulations);
@@ -119,12 +119,12 @@ void test_model() {
 }
 
 void test_importance_model() {
-  std::vector<ModelData> m = ModelData::ImportFromFile(
-      "atp_points_predicted_slams_no_tournament_name.csv");
+  std::vector<ImportanceModelData> m =
+      ImportanceModelData::ImportFromFile("atp_points_predicted_imp.csv");
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid_fixed_coin_slams.csv");
+  o.open("iid_vs_non_iid_imp.csv");
 
   o << "Player 1"
     << ","
@@ -148,13 +148,13 @@ void test_importance_model() {
     << ","
     << "average_games_iid" << std::endl;
 
-  for (const ModelData &cur_match : m) {
+  for (ImportanceModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E5;
+    const unsigned int kSimulations = 1E4;
 
-    AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
-                        kSimulations);
+    ImportanceMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
+                          kSimulations);
 
     std::map<std::string, double> iid_probs;
 
@@ -276,4 +276,4 @@ void verbose_test_run_importance() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { verbose_test_run_importance(); }
+int main() { test_model(); }
