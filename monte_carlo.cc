@@ -7,8 +7,8 @@
 #include "model_data.h"
 
 void test_model() {
-  std::vector<ModelData> m =
-      ModelData::ImportFromFile("atp_points_predicted_slams_no_tournament_name.csv");
+  std::vector<ModelData> m = ModelData::ImportFromFile(
+      "atp_points_predicted_slams_no_tournament_name.csv");
 
   std::ofstream o;
 
