@@ -21,7 +21,6 @@ MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
 
 Match MCModel::PlayMatch() {
   // Coin toss:
-
   int result;
 
   for (unsigned int i = 0; i < 10; ++i) {

@@ -8,11 +8,11 @@
 
 void test_model() {
   std::vector<ModelData> m =
-      ModelData::ImportFromFile("atp_points_predicted.csv");
+      ModelData::ImportFromFile("atp_points_predicted_slams_no_tournament_name.csv");
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid_fixed_coin.csv");
+  o.open("iid_vs_non_iid_fixed_coin_slams.csv");
 
   o << "Player 1"
     << ","
