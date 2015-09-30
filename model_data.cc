@@ -74,30 +74,30 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
   while (std::getline(i, cur_line)) {
     std::istringstream iss(cur_line);
 
-    std::array<bool, 5> cur_line;
+    std::array<bool, 5> cur_vals;
     std::string cur_player;
     std::string cur_opponent;
     std::string cur_match;
 
     std::string tiebreak;
     std::getline(iss, tiebreak, ',');
-    cur_line[0] = (tiebreak == "TRUE");
+    cur_vals[0] = (tiebreak == "TRUE");
 
     std::string breakpoint;
     std::getline(iss, breakpoint, ',');
-    cur_line[1] = (breakpoint == "TRUE");
+    cur_vals[1] = (breakpoint == "TRUE");
 
     std::string before_breakpoint;
     std::getline(iss, before_breakpoint, ',');
-    cur_line[2] = (before_breakpoint == "TRUE");
+    cur_vals[2] = (before_breakpoint == "TRUE");
 
     std::string set_up;
     std::getline(iss, set_up, ',');
-    cur_line[3] = (set_up == "1");
+    cur_vals[3] = (set_up == "1");
 
     std::string set_down;
     std::getline(iss, set_down, ',');
-    cur_line[4] = (set_down == "1");
+    cur_vals[4] = (set_down == "1");
 
     std::getline(iss, cur_player, ',');
     Tools::Trim(cur_player, '"');
@@ -126,7 +126,7 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     probability = std::stod(p_non_iid);
     probability_iid = std::stod(p_iid);
 
-    data[cur_match][cur_player].non_iid[cur_line] = probability;
+    data[cur_match][cur_player].non_iid[cur_vals] = probability;
     data[cur_match][cur_player].iid = probability_iid;
     data[cur_match][cur_player].opponent = cur_opponent;
   }

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 class Score {
   std::string server_;
@@ -19,6 +20,8 @@ class Score {
   void PlayerWinsPoint(std::string player);
   void PlayerWinsGame(std::string player);
   void PlayerWinsSet(std::string player);
+
+  friend std::ostream &operator<<(std::ostream &, const Score &);
 
   unsigned int player_games(std::string player) const;
   unsigned int player_points(std::string player) const;

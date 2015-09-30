@@ -11,8 +11,6 @@ class AdjustedMCModel : public MCModel {
 
   ModelData data_;
 
-  double non_iid_strength_;
-
   std::array<bool, 5> IdentifyPoint(const Point &p) const;
 
  public:

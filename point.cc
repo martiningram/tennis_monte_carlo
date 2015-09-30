@@ -54,11 +54,11 @@ bool Point::is_point_before_bp() const {
 }
 
 bool Point::is_set_up() const {
-  return (score_.sets_won(server_) > score_.sets_won(returner_));
+  return (score_.sets_won(server_) == score_.sets_won(returner_) + 1);
 }
 
 bool Point::is_set_down() const {
-  return (score_.sets_won(server_) < score_.sets_won(returner_));
+  return (score_.sets_won(server_) == score_.sets_won(returner_) - 1);
 }
 
 bool Point::is_break_point() const {
@@ -69,7 +69,7 @@ bool Point::is_break_point() const {
   else {
     return (score_.player_points(returner_) >= 3 &&
             (static_cast<int>(score_.player_points(returner_)) -
-             static_cast<int>(score_.player_points(server_))) == 1);
+             static_cast<int>(score_.player_points(server_))) >= 1);
   }
 }
 

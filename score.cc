@@ -70,3 +70,14 @@ const std::vector<std::pair<unsigned int, unsigned int>> &Score::set_score()
     const {
   return set_score_;
 }
+
+std::ostream &operator<<(std::ostream &o, const Score &s) {
+  o << s.server_ << " vs. " << s.receiver_ << ": ";
+
+  for (std::pair<unsigned int, unsigned int> p : s.set_score_) {
+    o << p.first << "-" << p.second << " ";
+  }
+
+  o << s.game_score_.first << ":" << s.game_score_.second;
+  return o;
+}
