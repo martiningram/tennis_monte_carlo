@@ -21,9 +21,13 @@ MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
 
 Match MCModel::PlayMatch() {
   // Coin toss:
-  std::uniform_int_distribution<int> distribution(0, 1);
 
-  unsigned int result = distribution(generator_);
+  int result;
+
+  for (unsigned int i = 0; i < 10; ++i) {
+    std::uniform_int_distribution<int> distribution(0, 1);
+    result = distribution(generator_);
+  }
 
   std::string cur_server;
   std::string cur_returner;
@@ -38,6 +42,11 @@ Match MCModel::PlayMatch() {
 
   std::string server_at_start = cur_server;
   std::string returner_at_start = cur_returner;
+
+  if (verbose_) {
+    std::cout << server_at_start << " is serving first; " << returner_at_start
+              << " second." << std::endl;
+  }
 
   std::vector<Set> sets;
 

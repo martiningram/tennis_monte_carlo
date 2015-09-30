@@ -22,6 +22,8 @@ class Match {
 
   const std::vector<Set> &sets() const;
 
+  std::string server_at_start() const;
+
   unsigned int total_games() const;
 
   std::string winner() const;
