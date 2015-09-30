@@ -7,12 +7,12 @@
 #include "model_data.h"
 
 void test_model() {
-  std::vector<ModelData> m =
-      ModelData::ImportFromFile("atp_points_predicted.csv");
+  std::vector<ModelData> m = ModelData::ImportFromFile(
+      "atp_points_predicted_slams_no_tournament_name.csv");
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid.csv");
+  o.open("iid_vs_non_iid_fixed_coin_slams.csv");
 
   o << "Player 1"
     << ","
@@ -23,6 +23,10 @@ void test_model() {
     << "p_win_iid"
     << ","
     << "p_win_dynamic"
+    << ","
+    << "p1_spw_iid"
+    << ","
+    << "p2_spw_iid"
     << ","
     << "average_sets"
     << ","
@@ -61,6 +65,11 @@ void test_model() {
         iid_matches.begin(), iid_matches.end(),
         [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
 
+    unsigned int p1_served_first = std::count_if(matches.begin(), matches.end(),
+                                                 [cur_match](const Match &m) {
+      return m.server_at_start() == cur_match.p1();
+    });
+
     unsigned int set_sum = 0;
     unsigned int set_sum_iid = 0;
 
@@ -92,11 +101,17 @@ void test_model() {
               << "; non-IID: " << average_sets << std::endl;
     std::cout << "IID games: " << average_games_iid
               << "; non-IID: " << average_games << std::endl;
+    std::cout << cur_match.p1() << " served first "
+              << p1_served_first / static_cast<double>(kSimulations) * 100
+              << "% of the time." << std::endl;
 
     o << cur_match.p1() << "," << cur_match.p2() << ","
       << cur_match.match_title() << "," << iid_win_prob << ","
-      << non_iid_win_prob << "," << average_sets << "," << average_sets_iid
-      << "," << average_games << "," << average_games_iid << std::endl;
+      << non_iid_win_prob << ","
+      << cur_match.ServeWinProbabilityIID(cur_match.p1()) << ","
+      << cur_match.ServeWinProbabilityIID(cur_match.p2()) << "," << average_sets
+      << "," << average_sets_iid << "," << average_games << ","
+      << average_games_iid << std::endl;
   }
   o.close();
 }
@@ -105,7 +120,7 @@ void verbose_test_run() {
   std::vector<ModelData> m =
       ModelData::ImportFromFile("atp_points_predicted.csv");
 
-  ModelData test = m[0];
+  ModelData test = m[2];
 
   bool bo5 = true;
 

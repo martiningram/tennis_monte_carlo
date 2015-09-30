@@ -51,3 +51,5 @@ unsigned int Match::total_games() const {
   }
   return sum;
 }
+
+std::string Match::server_at_start() const { return server_; }
