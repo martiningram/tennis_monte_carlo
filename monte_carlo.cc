@@ -122,6 +122,9 @@ void test_importance_model() {
   std::vector<ImportanceModelData> m =
       ImportanceModelData::ImportFromFile("atp_points_predicted_imp.csv");
 
+  std::vector<ModelData> basic_matches =
+      ModelData::ImportFromFile("atp_points_predicted.csv");
+
   std::ofstream o;
 
   o.open("iid_vs_non_iid_imp.csv");
@@ -135,6 +138,8 @@ void test_importance_model() {
     << "p_win_iid"
     << ","
     << "p_win_dynamic"
+    << ","
+    << "p_win_dynamic_basic"
     << ","
     << "p1_spw_iid"
     << ","
@@ -151,10 +156,21 @@ void test_importance_model() {
   for (ImportanceModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E4;
+    const unsigned int kSimulations = 1E5;
 
     ImportanceMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                           kSimulations);
+
+    // Find corresponding ModelData
+    ModelData basic_m =
+        *std::find_if(basic_matches.begin(), basic_matches.end(),
+                      [cur_match](const ModelData &d) {
+          return cur_match.p1() == d.p1() && cur_match.p2() == d.p2() &&
+                 cur_match.match_title() == d.match_title();
+        });
+
+    AdjustedMCModel basic_adj(cur_match.p1(), cur_match.p2(), bo5, basic_m,
+                              kSimulations);
 
     std::map<std::string, double> iid_probs;
 
@@ -168,6 +184,7 @@ void test_importance_model() {
 
     const std::vector<Match> &matches = adj.matches();
     const std::vector<Match> &iid_matches = iid_model.matches();
+    const std::vector<Match> &basic_matches = basic_adj.matches();
 
     unsigned int i = std::count_if(
         matches.begin(), matches.end(),
@@ -175,6 +192,10 @@ void test_importance_model() {
 
     unsigned int iid_i = std::count_if(
         iid_matches.begin(), iid_matches.end(),
+        [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
+
+    unsigned int basic_i = std::count_if(
+        basic_matches.begin(), basic_matches.end(),
         [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
 
     unsigned int p1_served_first = std::count_if(matches.begin(), matches.end(),
@@ -203,12 +224,14 @@ void test_importance_model() {
 
     double iid_win_prob = (iid_i / static_cast<double>(kSimulations));
     double non_iid_win_prob = (i / static_cast<double>(kSimulations));
+    double basic_win_prob = (basic_i / static_cast<double>(kSimulations));
 
     std::cout << "Match of " << cur_match.p1() << " against " << cur_match.p2()
               << std::endl;
     std::cout << "IID probability: " << iid_win_prob * 100 << "%" << std::endl;
     std::cout << "Non-IID probability: " << non_iid_win_prob * 100 << "%"
               << std::endl;
+    std::cout << "Basic non-iid: " << basic_win_prob * 100 << "%" << std::endl;
     std::cout << "IID sets: " << average_sets_iid
               << "; non-IID: " << average_sets << std::endl;
     std::cout << "IID games: " << average_games_iid
@@ -226,7 +249,7 @@ void test_importance_model() {
 
     o << cur_match.p1() << "," << cur_match.p2() << ","
       << cur_match.match_title() << "," << iid_win_prob << ","
-      << non_iid_win_prob << ","
+      << non_iid_win_prob << "," << basic_win_prob << ","
       << cur_match.ServeWinProbabilityIID(cur_match.p1()) << ","
       << cur_match.ServeWinProbabilityIID(cur_match.p2()) << "," << average_sets
       << "," << average_sets_iid << "," << average_games << ","

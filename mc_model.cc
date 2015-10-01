@@ -6,18 +6,12 @@
 
 MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
                  unsigned int num_matches, bool verbose)
-    : p1_(p1),
+    : generator_(std::random_device{}()),
+      p1_(p1),
       p2_(p2),
       best_of_five_(best_of_five),
       kNumMatches_(num_matches),
-      verbose_(verbose) {
-  // Seed the generator:
-  typedef std::chrono::high_resolution_clock myclock;
-  myclock::time_point beginning = myclock::now();
-  myclock::duration d = myclock::now() - beginning;
-  unsigned seed = d.count();
-  generator_.seed(seed);
-}
+      verbose_(verbose) {}
 
 Match MCModel::PlayMatch() {
   // Coin toss:
