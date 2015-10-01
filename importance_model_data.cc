@@ -19,6 +19,9 @@ ImportanceModelData::ImportanceModelData(std::string p1, std::string p2,
       model_probs_p1_(model_probs_p1),
       model_probs_p2_(model_probs_p2) {}
 
+unsigned long long ImportanceModelData::total_missing_points_(0);
+unsigned long long ImportanceModelData::total_predicted_points_(0);
+
 std::string ImportanceModelData::p1() const { return p1_; }
 
 std::string ImportanceModelData::p2() const { return p2_; }
@@ -35,16 +38,8 @@ double ImportanceModelData::ServeWinProbabilityNonIID(const Point &p) {
   flags[3] = p.is_set_up();
   flags[4] = p.is_set_down();
 
-  for (auto flag : flags) {
-    std::cout << flag << " ";
-  }
-
-  std::cout << std::endl;
-
   ModelMap &relevant_map =
       (p.server() == p1_) ? (model_probs_p1_) : (model_probs_p2_);
-
-  std::cout << p.score() << std::endl;
 
   auto match_it = relevant_map.find(flags);
   assert(match_it != relevant_map.end());
@@ -56,8 +51,6 @@ double ImportanceModelData::ServeWinProbabilityNonIID(const Point &p) {
   unsigned int sets_won_returner = p.score().sets_won(p.returner());
 
   SetsWon sets_won(sets_won_server, sets_won_returner);
-
-  std::cout << sets_won_server << " " << sets_won_returner << std::endl;
 
   auto sets_it = match_level.find(sets_won);
   assert(sets_it != match_level.end());
@@ -71,6 +64,13 @@ double ImportanceModelData::ServeWinProbabilityNonIID(const Point &p) {
   SetScore set_score(games_won_server, games_won_returner);
 
   auto games_it = set_level.find(set_score);
+
+  if (games_it == set_level.end()) {
+    // This situation apparently is very rare. Return i.i.d.:
+    ++total_missing_points_;
+    ++total_predicted_points_;
+    return ServeWinProbabilityIID(p.server());
+  }
   assert(games_it != set_level.end());
 
   auto &game_level = games_it->second;
@@ -79,14 +79,20 @@ double ImportanceModelData::ServeWinProbabilityNonIID(const Point &p) {
   unsigned int points_won_server = p.score().player_points(p.server());
   unsigned int points_won_returner = p.score().player_points(p.returner());
 
-  if (points_won_server > 3 && points_won_returner > 3) {
+  // Modifications: Assume that any score greater than 6-6 in a tiebreak and 3-3
+  // in a game is equivalent to 6-6 or 3-3 with the appropriate difference. This
+  // is to be able to cope with unusual scenarios.
+  if (p.is_tiebreak() && points_won_server > 6 && points_won_returner > 6) {
+    unsigned int new_p_server = 6 + static_cast<int>(points_won_server) -
+                                static_cast<int>(points_won_returner);
+    unsigned int new_p_returner = 6;
+    points_won_server = new_p_server;
+    points_won_returner = new_p_returner;
+  } else if (!p.is_tiebreak() && points_won_server > 3 &&
+             points_won_returner > 3) {
     unsigned int new_p_server = 3 + static_cast<int>(points_won_server) -
                                 static_cast<int>(points_won_returner);
     unsigned int new_p_returner = 3;
-
-    std::cout << "From: " << points_won_server << "-" << points_won_returner
-              << " to " << new_p_server << "-" << new_p_returner << std::endl;
-
     points_won_server = new_p_server;
     points_won_returner = new_p_returner;
   }
@@ -94,7 +100,15 @@ double ImportanceModelData::ServeWinProbabilityNonIID(const Point &p) {
   GameScore game_score(points_won_server, points_won_returner);
 
   auto points_it = game_level.find(game_score);
-  assert(points_it != game_level.end());
+  if (points_it == game_level.end()) {
+    // This point is so rare it did not occur in the database. Return an i.i.d.
+    // probability.
+    ++total_missing_points_;
+    ++total_predicted_points_;
+    return ServeWinProbabilityIID(p.server());
+  }
+
+  ++total_predicted_points_;
 
   double probability = points_it->second;
 
@@ -117,6 +131,8 @@ std::vector<ImportanceModelData> ImportanceModelData::ImportFromFile(
   assert(i.good());
 
   std::string cur_line;
+
+  std::cout << "Beginning import." << std::endl;
 
   struct PlayerMatchData {
     std::map<Flags,
@@ -238,5 +254,7 @@ std::vector<ImportanceModelData> ImportanceModelData::ImportFromFile(
 
     results.emplace_back(cur_data);
   }
+
+  std::cout << "Finished import." << std::endl;
   return results;
 }

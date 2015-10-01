@@ -64,9 +64,7 @@ bool Point::is_set_down() const {
 bool Point::is_break_point() const {
   if (is_tiebreak()) {
     return false;
-  }
-
-  else {
+  } else {
     return (score_.player_points(returner_) >= 3 &&
             (static_cast<int>(score_.player_points(returner_)) -
              static_cast<int>(score_.player_points(server_))) >= 1);

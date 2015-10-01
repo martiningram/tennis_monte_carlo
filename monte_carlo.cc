@@ -41,7 +41,7 @@ void test_model() {
   for (const ModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E4;
+    const unsigned int kSimulations = 1E5;
 
     AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                         kSimulations);
@@ -217,6 +217,13 @@ void test_importance_model() {
               << p1_served_first / static_cast<double>(kSimulations) * 100
               << "% of the time." << std::endl;
 
+    std::cout << ImportanceModelData::total_missing_points_ << " out of "
+              << ImportanceModelData::total_predicted_points_ << std::endl;
+
+    // Reset:
+    ImportanceModelData::total_missing_points_ = 0;
+    ImportanceModelData::total_predicted_points_ = 0;
+
     o << cur_match.p1() << "," << cur_match.p2() << ","
       << cur_match.match_title() << "," << iid_win_prob << ","
       << non_iid_win_prob << ","
@@ -268,6 +275,9 @@ void verbose_test_run_importance() {
 
   ImportanceMCModel adj(test.p1(), test.p2(), bo5, test, kSimulations, true);
 
+  std::cout << ImportanceModelData::total_missing_points_ << " out of "
+            << ImportanceModelData::total_predicted_points_ << std::endl;
+
   std::map<std::string, double> iid_probs;
 
   iid_probs[test.p1()] = test.ServeWinProbabilityIID(test.p1());
@@ -276,4 +286,4 @@ void verbose_test_run_importance() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { test_model(); }
+int main() { test_importance_model(); }

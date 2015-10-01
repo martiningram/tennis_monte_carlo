@@ -34,6 +34,9 @@ class ImportanceModelData {
                       ModelMap model_probs_p1, ModelMap model_probs_p2,
                       double p1_iid, double p2_iid);
 
+  static unsigned long long total_missing_points_;
+  static unsigned long long total_predicted_points_;
+
   std::string p1() const;
   std::string p2() const;
   std::string match_title() const;
