@@ -10,7 +10,7 @@ def plot_iid_vs_non_iid(df):
         x = df["p_win_iid"],
         y = df["p_win_dynamic"],
         mode = 'markers',
-        name = 'dynamic',
+        name = 'dynamic_imp',
         text = df["Player 1"].map(str) + " vs " + df["Player 2"],
         marker=Marker(
             size=8,
@@ -42,47 +42,76 @@ def plot_iid_vs_non_iid(df):
         )
 
     fig = Figure(data=data, layout=layout)
-    plot_url = py.plot(fig, filename = 'non-iid-effect-coin')
+    plot_url = py.plot(fig, filename = 'non-iid-effect')
+
+def plot_iid_vs_non_iid_pyplot(df):
+
+    iid_prob = df["p_win_iid"]
+    non_iid_prob = df["p_win_dynamic"]
+
+    plt.scatter(iid_prob, non_iid_prob)
+    plt.hold('on')
+    plt.plot(iid_prob, iid_prob)
+    plt.show()
 
 def explore_detailed_data():
     df = pd.read_csv('match_one.csv')
 
-    p1 = df[df["serving"] == "Adrian Mannarino"]
+    df = df.dropna()
 
-    print(p1.columns)
+    p1 = df[df["serving"] == "Adrian Mannarino"]
 
     deviations = p1["p_noniid"] - p1["p_iid"]
 
+    print(p1.columns)
+    print(p1["serve_points_won"].unique())
 
-explore_detailed_data()
-exit();
+    only_tb = p1[p1["tiebreak"] == True]
 
-df = pd.read_csv('iid_vs_non_iid_fixed_coin.csv')
+    print("TB analysis:")
 
-spw_1_iid = df["p1_spw_iid"]
-spw_2_iid = df["p2_spw_iid"]
+    print(only_tb["serve_points_won"].unique())
 
-delta_spw = spw_1_iid - spw_2_iid
-sum_spw = spw_1_iid + spw_2_iid
-delta_pred = df["p_win_iid"] - df["p_win_dynamic"]
+    print(min((p1[p1["serve_points_won"] == 0]).p_noniid))
 
-# Discretise:
+    print(p1[(p1["serving_games_won"] == 0) & (p1["returning_games_won"] == 5) & \
+             (p1["serving_sets_won"] == 2) & (p1["returning_sets_won"] == 0) &
+             (p1["serve_points_won"] == 3) & (p1["return_points_won"] == 2)])
 
-# bins = np.linspace(min(delta_spw), max(delta_spw), 75)
-# 
+def by_ranking(df, df_results):
+    print(df.iloc[1])
+    print(df_results.iloc[1])
+
+    for i,mc_row in df.iterrows():
+        # Find rankings:
+        matching_results = \
+        df_results[(df_results["serving"] == mc_row["Player 1"]) & \
+                   (df_results["returning"] == mc_row["Player 2"])]
+        print(matching_results.shape)
+
+df = pd.read_csv('../iid_vs_non_iid_players.csv')
+df_results = pd.read_csv('../atp_points_predicted_player.csv')
+
+by_ranking(df, df_results)
+assert(False)
+
+# # Discretise:
+
+# bins = np.linspace(min(delta_spw), max(delta_spw), 50)
+
 # xs, ys = list(), list()
-# 
+
 # for cur_bin, next_bin in zip(bins, bins[1:]):
-# 
+
 #     cur_x = (cur_bin + next_bin) / 2
-# 
+
 #     cur_ys = delta_pred[(delta_spw >= cur_bin) & (delta_spw < next_bin)]
-# 
+
 #     cur_y = np.average(cur_ys)
-# 
+
 #     xs.append(cur_x)
 #     ys.append(cur_y)
-# 
+
 # plt.scatter(xs, ys)
 # plt.show()
 
@@ -98,12 +127,12 @@ print(df.columns)
 # plt.hist(df["average_games_iid"] - df["average_games"])
 # plt.show()
 
-# plot_iid_vs_non_iid(df)
+# plot_iid_vs_non_iid_pyplot(df)
 
-plt.scatter(delta_spw, -delta_pred)
-plt.xlabel('spw_1_iid - spw_2_iid')
-plt.ylabel('p_win_dynamic - p_win_iid')
-plt.show()
+# plt.scatter(delta_spw, -delta_pred)
+# plt.xlabel('spw_1_iid - spw_2_iid')
+# plt.ylabel('p_win_dynamic - p_win_iid')
+# plt.show()
 
 # plt.scatter(df["p_win_iid"], df["p_win_dynamic"] - df["p_win_iid"])
 # plt.show()

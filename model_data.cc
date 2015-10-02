@@ -2,6 +2,7 @@
 #include <iostream>
 #include <assert.h>
 #include <sstream>
+#include <string>
 
 #include "model_data.h"
 #include "tools.h"
