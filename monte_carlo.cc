@@ -14,7 +14,7 @@ void test_model() {
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid_fixed_coin_slams.csv");
+  o.open("iid_vs_non_iid_slams.csv");
 
   o << "Player 1"
     << ","
@@ -156,7 +156,7 @@ void test_importance_model() {
   for (ImportanceModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E5;
+    const unsigned int kSimulations = 1E4;
 
     ImportanceMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                           kSimulations);
@@ -309,4 +309,4 @@ void verbose_test_run_importance() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { test_importance_model(); }
+int main() { test_model(); }
