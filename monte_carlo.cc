@@ -14,7 +14,7 @@ void test_model() {
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid_players_5e4trials.csv");
+  o.open("iid_vs_non_iid_players_1e4trials.csv");
 
   o << "Player 1"
     << ","
@@ -41,7 +41,7 @@ void test_model() {
   for (const ModelData &cur_match : m) {
     bool bo5 = true;
 
-    const unsigned int kSimulations = 1E5;
+    const unsigned int kSimulations = 1E4;
 
     AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                         kSimulations);
