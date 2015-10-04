@@ -82,18 +82,73 @@ def by_ranking(df, df_results):
     print(df.iloc[1])
     print(df_results.iloc[1])
 
+    results = list()
+    processed_matches = list()
+
+    print(df_results.columns)
+
     for i,mc_row in df.iterrows():
         # Find rankings:
         matching_results = \
         df_results[(df_results["serving"] == mc_row["Player 1"]) & \
                    (df_results["returning"] == mc_row["Player 2"])]
-        print(matching_results.shape)
+
+        for i,res_row in matching_results.iterrows():
+            if res_row["serving_match"][:len(mc_row["Match title"])] == \
+            mc_row["Match title"] \
+            and res_row["serving_match"] not in processed_matches:
+                higher_ranked = res_row["server_rank"] \
+                                if res_row["server_rank"] < res_row["return_rank"] \
+                                else res_row["return_rank"]
+                lower_ranked = res_row["server_rank"] \
+                               if res_row["server_rank"] > res_row["return_rank"] \
+                               else res_row["return_rank"]
+
+                [higher_ranked_iid, higher_ranked_dynamic] = \
+                [mc_row["p_win_iid"], mc_row["p_win_dynamic"]] \
+                if mc_row["Player 1"] == higher_ranked \
+                else [1 - mc_row["p_win_iid"], 1 - mc_row["p_win_dynamic"]]
+
+                cur_results = {"p1_rank": res_row["server_rank"],
+                               "p2_rank": res_row["return_rank"],
+                               "tournament" : res_row["tournament"],
+                               "p1_won" : res_row["server_win"],
+                               "higher_ranked" : higher_ranked,
+                               "lower_ranked" : lower_ranked,
+                               "higher_ranked_iid" : higher_ranked_iid,
+                               "higher_ranked_dynamic" : higher_ranked_dynamic,
+                               "delta_p" : mc_row["p_win_dynamic"] - \
+                mc_row["p_win_iid"]}
+
+                results.append(cur_results)
+                processed_matches.append(res_row["serving_match"])
+
+    matched_rankings = pd.DataFrame(results, index = df.index)
+    result = pd.concat([df, matched_rankings], axis=1)
+
+    wrong_ones = [x for i,x in result.iterrows() \
+                  if x["p_win_dynamic"] > 0.5 and x["p1_won"] == 0]
+
+    print(wrong_ones)
+    assert(False)
+
+    brier = np.sum((result["p_win_dynamic"] - result["p1_won"])**2) / \
+            (float(result.shape[0]))
+    brier_iid = np.sum((result["p_win_iid"] - result["p1_won"])**2) / \
+                (float(result.shape[0]))
+
+    print(result.groupby('Player 1').mean().sort('delta_p'))
+
+    assert(False)
+
+    result.to_csv("matched_simulations.csv")
+
+    print(brier, brier_iid)
 
 df = pd.read_csv('../iid_vs_non_iid_players.csv')
 df_results = pd.read_csv('../atp_points_predicted_player.csv')
 
 by_ranking(df, df_results)
-assert(False)
 
 # # Discretise:
 
@@ -116,6 +171,14 @@ assert(False)
 # plt.show()
 
 # plt.scatter(delta_spw, delta_pred)
+
+plt.hist(df["p_win_dynamic"] - df["p_win_iid"], 50)
+plt.xlabel("Difference in winning probability, dynamic model")
+plt.ylabel("Frequency in dataset")
+plt.show()
+
+# plt.hist(df["average_sets"] - df["average_sets_iid"], 50)
+# plt.show()
 
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
