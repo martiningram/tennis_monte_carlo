@@ -6,7 +6,7 @@
 
 MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
                  unsigned int num_matches, bool verbose)
-    : generator_(std::random_device{}()),
+    : generator_(std::time(0)),
       p1_(p1),
       p2_(p2),
       best_of_five_(best_of_five),
@@ -20,6 +20,9 @@ Match MCModel::PlayMatch() {
   for (unsigned int i = 0; i < 10; ++i) {
     std::uniform_int_distribution<int> distribution(0, 1);
     result = distribution(generator_);
+    if (verbose_) {
+      std::cout << "The generator produced: " << result << std::endl;
+    }
   }
 
   std::string cur_server;
