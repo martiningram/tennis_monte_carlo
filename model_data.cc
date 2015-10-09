@@ -68,9 +68,25 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
 
   std::map<std::string, std::map<std::string, PlayerMatchData>> data;
 
-  // need to skip first line:
+  // Make sure header conforms to what I think it conforms to: (to avoid parsing
+  // errors like before...)
+
+  std::vector<std::string> expected_order{
+      "\"tiebreak\"",  "\"breakpoint\"",    "\"before_breakpoint\"",
+      "\"set_up\"",    "\"set_down\"",      "\"serving\"",
+      "\"returning\"", "\"serving_match\"", "\"returning_match\"",
+      "\"p_iid\"",     "\"p_noniid\""};
 
   std::getline(i, cur_line);
+
+  {
+    std::istringstream first_line(cur_line);
+    for (std::string cur_element : expected_order) {
+      std::string cur_header;
+      std::getline(first_line, cur_header, ',');
+      assert(cur_header == cur_element);
+    }
+  }
 
   while (std::getline(i, cur_line)) {
     std::istringstream iss(cur_line);
@@ -110,6 +126,7 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     std::getline(iss, cur_match, ',');
     Tools::Trim(cur_match, '"');
 
+    // TODO: Add an assert for the headers!!
     // Need to cut off the last name to have match name. Find colon:
 
     std::size_t last_char = cur_match.rfind(':');
@@ -118,11 +135,11 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     double probability;
     double probability_iid;
 
-    std::string p_non_iid;
     std::string p_iid;
+    std::string p_non_iid;
 
-    std::getline(iss, p_non_iid, ',');
     std::getline(iss, p_iid, ',');
+    std::getline(iss, p_non_iid, ',');
 
     probability = std::stod(p_non_iid);
     probability_iid = std::stod(p_iid);
@@ -164,4 +181,71 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     results.emplace_back(cur_data);
   }
   return results;
+}
+
+std::map<std::array<bool, 5>, double> ModelData::model_probs_p1() const {
+  return model_probabilities_p1_;
+}
+
+std::map<std::array<bool, 5>, double> ModelData::model_probs_p2() const {
+  return model_probabilities_p2_;
+}
+
+void ModelData::ExportToFile(const std::vector<ModelData> &m,
+                             std::string csv_file) {
+  std::ofstream o;
+
+  o.open(csv_file);
+
+  std::vector<std::string> headers{
+      "\"tiebreak\"",  "\"breakpoint\"",    "\"before_breakpoint\"",
+      "\"set_up\"",    "\"set_down\"",      "\"serving\"",
+      "\"returning\"", "\"serving_match\"", "\"returning_match\"",
+      "\"p_iid\"",     "\"p_noniid\""};
+
+  std::string final_header = headers.back();
+  headers.pop_back();
+
+  for (std::string &h : headers) {
+    o << h << ",";
+  }
+
+  o << final_header << std::endl;
+
+  for (const ModelData &data : m) {
+    std::map<std::array<bool, 5>, double> m_p1(data.model_probs_p1());
+    std::map<std::array<bool, 5>, double> m_p2(data.model_probs_p2());
+
+    auto both_maps = std::vector<decltype(m_p1)>{m_p1, m_p2};
+
+    for (unsigned int i = 0; i < 2; ++i) {
+      std::string cur_server = (i == 0) ? (data.p1()) : (data.p2());
+      std::string cur_returner = (i == 0) ? (data.p2()) : (data.p1());
+      auto &cur_map = both_maps[i];
+
+      for (auto p : cur_map) {
+        std::array<bool, 5> b = p.first;
+        double p_noniid = p.second;
+
+        auto translate = [](bool v) { return (v ? "TRUE" : "FALSE"); };
+        o << translate(b[0]) << "," << translate(b[1]) << "," << translate(b[2])
+          << ",";
+        o << b[3] << "," << b[4] << ",";
+
+        o << cur_server << "," << cur_returner << ",";
+
+        // Make serving and returning match:
+
+        std::string basis = data.match_title();
+
+        std::string serving_match = basis + std::string(":") + cur_server;
+        std::string returning_match = basis + std::string(":") + cur_returner;
+
+        o << serving_match << "," << returning_match << ","
+          << data.ServeWinProbabilityIID(cur_server) << "," << p_noniid
+          << std::endl;
+      }
+    }
+  }
+  o.close();
 }

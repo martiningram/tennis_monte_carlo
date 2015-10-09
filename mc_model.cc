@@ -58,6 +58,10 @@ Match MCModel::PlayMatch() {
     }
   }
 
+  if (verbose_) {
+    std::cout << cur_score << std::endl;
+  }
+
   return Match(server_at_start, returner_at_start, sets, best_of_five_);
 }
 

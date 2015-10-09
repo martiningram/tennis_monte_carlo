@@ -10,11 +10,11 @@
 
 void test_model() {
   std::vector<ModelData> m = ModelData::ImportFromFile(
-      "atp_points_predicted_player_no_tournament_name.csv");
+      "wta_points_predicted_player_no_tournament_name.csv");
 
   std::ofstream o;
 
-  o.open("iid_vs_non_iid_players_1e4trials.csv");
+  o.open("iid_vs_non_iid_wta_players_1e4trials.csv");
 
   o << "Player 1"
     << ","
@@ -39,12 +39,32 @@ void test_model() {
     << "average_games_iid" << std::endl;
 
   for (const ModelData &cur_match : m) {
-    bool bo5 = true;
+    bool bo5 = false;
 
     const unsigned int kSimulations = 1E4;
 
     AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                         kSimulations);
+
+    std::cout << cur_match.p1() << " has the following probs: ";
+
+    for (auto entry : cur_match.model_probs_p1()) {
+      for (auto b : entry.first) {
+        std::cout << b << " ";
+      }
+
+      std::cout << entry.second << std::endl;
+    }
+
+    std::cout << cur_match.p2() << " has the following probs: ";
+
+    for (auto entry : cur_match.model_probs_p2()) {
+      for (auto b : entry.first) {
+        std::cout << b << " ";
+      }
+
+      std::cout << entry.second << std::endl;
+    }
 
     std::map<std::string, double> iid_probs;
 
@@ -264,10 +284,12 @@ void test_importance_version() {
 }
 
 void verbose_test_run() {
-  std::vector<ModelData> m =
-      ModelData::ImportFromFile("atp_points_predicted.csv");
+  std::vector<ModelData> m = ModelData::ImportFromFile(
+      "atp_points_predicted_player_no_tournament_name.csv");
 
-  ModelData test = m[2];
+  ModelData::ExportToFile(m, "atp_points_predicted_player_export_test.csv");
+
+  ModelData test = m[5];
 
   bool bo5 = true;
 
@@ -280,7 +302,8 @@ void verbose_test_run() {
   iid_probs[test.p1()] = test.ServeWinProbabilityIID(test.p1());
   iid_probs[test.p2()] = test.ServeWinProbabilityIID(test.p2());
 
-  IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
+  IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations,
+                       false);
 }
 
 void verbose_test_run_importance() {
@@ -309,4 +332,4 @@ void verbose_test_run_importance() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { test_model(); }
+int main() { verbose_test_run(); }

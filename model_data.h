@@ -32,7 +32,12 @@ class ModelData {
   std::string p1() const;
   std::string p2() const;
   std::string match_title() const;
+  std::map<std::array<bool, 5>, double> model_probs_p1() const;
+  std::map<std::array<bool, 5>, double> model_probs_p2() const;
+
   static std::vector<ModelData> ImportFromFile(std::string csv_file);
+  static void ExportToFile(const std::vector<ModelData> &,
+                           std::string csv_file);
 };
 
 #endif
