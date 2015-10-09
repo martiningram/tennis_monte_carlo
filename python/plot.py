@@ -5,6 +5,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+# Given a list of labels and points (xs, ys), plots a scatter plot and labels
+# each point. plot_line optionally draws a linear fit through the points.
+def plot_annotated_scatter(labels, xs, ys, plot_line = False):
+
+    plt.subplots_adjust(bottom = 0.1)
+
+    plt.scatter(xs, ys, marker = 'o')
+
+    for label, x, y in zip(labels, xs, ys):
+        plt.annotate(
+            label, 
+            xy = (x, y), xytext = (-10, 10),
+            textcoords = 'offset points', ha = 'right', va = 'bottom',
+            bbox = dict(boxstyle = 'round,pad=0.3', fc = 'yellow', alpha = 0.5),
+            arrowprops = dict(arrowstyle = '->', connectionstyle =
+                              'arc3,rad=0'),
+            fontsize = 8)
+
+    if (plot_line):
+        coeff = np.polyfit(xs,ys,1)
+        plt.plot(xs,np.polyval(coeff,xs))
+
+    return plt
+
 def plot_iid_vs_non_iid(df):
     trace0 = Scatter(
         x = df["p_win_iid"],
@@ -78,14 +102,31 @@ def explore_detailed_data():
              (p1["serving_sets_won"] == 2) & (p1["returning_sets_won"] == 0) &
              (p1["serve_points_won"] == 3) & (p1["return_points_won"] == 2)])
 
-def by_ranking(df, df_results):
-    print(df.iloc[1])
-    print(df_results.iloc[1])
+def plot_average_deviation(df):
+
+    delta_spw = df["p_win_dynamic"] - df["p_win_iid"]
+    bins = np.linspace(min(delta_spw), max(delta_spw), 50)
+    xs, ys = list(), list()
+
+    for cur_bin, next_bin in zip(bins, bins[1:]):
+
+        cur_x = (cur_bin + next_bin) / 2
+        cur_ys = delta_pred[(delta_spw >= cur_bin) & (delta_spw < next_bin)]
+        cur_y = np.average(cur_ys)
+
+        xs.append(cur_x)
+        ys.append(cur_y)
+
+    plt.scatter(xs, ys)
+    plt.show()
+
+def add_ranking(df, df_results):
+
+    print(df.columns)
+    print(df_results.columns)
 
     results = list()
     processed_matches = list()
-
-    print(df_results.columns)
 
     for i,mc_row in df.iterrows():
         # Find rankings:
@@ -106,7 +147,7 @@ def by_ranking(df, df_results):
 
                 [higher_ranked_iid, higher_ranked_dynamic] = \
                 [mc_row["p_win_iid"], mc_row["p_win_dynamic"]] \
-                if mc_row["Player 1"] == higher_ranked \
+                if res_row["server_rank"] == higher_ranked \
                 else [1 - mc_row["p_win_iid"], 1 - mc_row["p_win_dynamic"]]
 
                 cur_results = {"p1_rank": res_row["server_rank"],
@@ -117,6 +158,11 @@ def by_ranking(df, df_results):
                                "lower_ranked" : lower_ranked,
                                "higher_ranked_iid" : higher_ranked_iid,
                                "higher_ranked_dynamic" : higher_ranked_dynamic,
+                               "higher_ranked_won" : 1 if (res_row["server_win"] == 1 and \
+                               res_row["server_rank"] == higher_ranked) or  \
+                               (res_row["server_win"] == 0 and \
+                                res_row["return_rank"] == higher_ranked) \
+                               else 0,
                                "delta_p" : mc_row["p_win_dynamic"] - \
                 mc_row["p_win_iid"]}
 
@@ -125,77 +171,116 @@ def by_ranking(df, df_results):
 
     matched_rankings = pd.DataFrame(results, index = df.index)
     result = pd.concat([df, matched_rankings], axis=1)
-
-    wrong_ones = [x for i,x in result.iterrows() \
-                  if x["p_win_dynamic"] > 0.5 and x["p1_won"] == 0]
-
-    print(wrong_ones)
-    assert(False)
-
-    brier = np.sum((result["p_win_dynamic"] - result["p1_won"])**2) / \
-            (float(result.shape[0]))
-    brier_iid = np.sum((result["p_win_iid"] - result["p1_won"])**2) / \
-                (float(result.shape[0]))
-
-    print(result.groupby('Player 1').mean().sort('delta_p'))
-
-    assert(False)
-
+    print(result.columns)
     result.to_csv("matched_simulations.csv")
 
-    print(brier, brier_iid)
+    entries = result.shape[0]
 
-df = pd.read_csv('../iid_vs_non_iid_players.csv')
-df_results = pd.read_csv('../atp_points_predicted_player.csv')
+    brier_iid = 1/float(entries) * np.sum((result["p_win_iid"] - result["p1_won"])**2)
+    brier_dynamic = 1/float(entries) * \
+                    np.sum((result["p_win_dynamic"] - result["p1_won"])**2)
 
-by_ranking(df, df_results)
+    print(brier_iid, brier_dynamic)
+    
+    return result
 
-# # Discretise:
+def plot_deviation_histogram(df):
+   plt.hist(df["p_win_dynamic"] - df["p_win_iid"], 50)
+   plt.xlabel("Difference in winning probability, dynamic model")
+   plt.ylabel("Frequency in dataset")
+   print(df[(df["p_win_dynamic"] - df["p_win_iid"]) == \
+            np.max(df["p_win_dynamic"] - df["p_win_iid"])])
+   plt.show()
 
-# bins = np.linspace(min(delta_spw), max(delta_spw), 50)
+def plot_by_ranking(df):
+    min_bin = np.linspace(1,100,10)
+    print(min_bin)
 
-# xs, ys = list(), list()
+    results = list()
 
-# for cur_bin, next_bin in zip(bins, bins[1:]):
+    for (lower_lim, upper_lim) in zip(min_bin,min_bin[1:]):
 
-#     cur_x = (cur_bin + next_bin) / 2
+        matching_rows = df[(df["higher_ranked"] > lower_lim) \
+                           & (df["higher_ranked"] <= upper_lim)]
 
-#     cur_ys = delta_pred[(delta_spw >= cur_bin) & (delta_spw < next_bin)]
+        pred_prob_dyn = np.median(matching_rows["higher_ranked_dynamic"])
+        pred_prob_iid = np.median(matching_rows["higher_ranked_iid"])
+        av_win = np.average(matching_rows["higher_ranked_won"])
 
-#     cur_y = np.average(cur_ys)
+        results.append([lower_lim, upper_lim, pred_prob_iid, pred_prob_dyn, av_win])
 
-#     xs.append(cur_x)
-#     ys.append(cur_y)
+    results = np.transpose(np.array(results))
 
-# plt.scatter(xs, ys)
-# plt.show()
+    plt.bar((results[0,:]+results[1,:]) / 2, results[2,:], label="iid", color='g')
+    plt.bar((results[0,:]+results[1,:]) / 2 + 1, results[3,:], label="dynamic")
+    plt.bar((results[0,:]+results[1,:]) / 2 + 2, results[4,:], label="actual", color='r')
+    plt.xlabel('Ranking, higher-ranked player (binned)')
+    plt.ylabel('Average probability of winning')
+    plt.title('ATP')
+    plt.legend()
+    plt.show()
 
-# plt.scatter(delta_spw, delta_pred)
+def find_correct_bumps(df):
 
-plt.hist(df["p_win_dynamic"] - df["p_win_iid"], 50)
-plt.xlabel("Difference in winning probability, dynamic model")
-plt.ylabel("Frequency in dataset")
-plt.show()
+    delta = df["delta_p"]
 
-# plt.hist(df["average_sets"] - df["average_sets_iid"], 50)
-# plt.show()
+    correct_bumps = np.sum(((delta < 0) & (df["p1_won"] == 0)) | \
+                    ((delta > 0) & (df["p1_won"] == 1)))
 
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(delta_spw, sum_spw, delta_pred)
-# plt.show()
+    incorrect_bumps = delta.shape[0] - correct_bumps
+
+    print(correct_bumps / float(delta.shape[0]), incorrect_bumps / float(delta.shape[0]))
+
+def plot_average_offset(df):
+
+    names = list()
+    av_offsets = list()
+    spw_deltas = list()
+    spws = list()
+
+    for player in pd.concat([df["Player 1"], df["Player 2"]]).unique():
+
+        if (player == "marcel granollers"):
+            continue
+
+        p1_matches = df[df["Player 1"] == player]
+        offsets_as_p1 = p1_matches["delta_p"]
+        iid_prob_p1 = p1_matches["p_win_iid"]
+        spw_p1 = p1_matches["p1_spw_iid"]
+
+        p2_matches = df[df["Player 2"] == player]
+        offsets_as_p2 = -p2_matches["delta_p"]
+        iid_prob_p2 = 1 - p2_matches["p_win_iid"]
+        spw_p2 = p2_matches["p2_spw_iid"]
+
+        if (pd.concat([p1_matches, p2_matches]).shape[0] > 5):
+
+            names.append(player)
+            av_offsets.append(np.median(pd.concat([offsets_as_p1, offsets_as_p2])))
+            spw_deltas.append(np.median(pd.concat([iid_prob_p1, iid_prob_p2])))
+            spws.append(np.median(pd.concat([spw_p1, spw_p2])))
+
+    plt = plot_annotated_scatter(names, spw_deltas, av_offsets)
+    plt.xlabel("Median i.i.d. winning probability (skill)")
+    plt.ylabel("Median dynamic correction (mentality)")
+
+    plt.figure(2)
+    plt = plot_annotated_scatter(names, spws, av_offsets)
+    plt.show()
+
+t_type = "atp"
+
+if (t_type == "wta"):
+    df = pd.read_csv('../iid_vs_non_iid_wta_players_1e4trials.csv')
+    df_results = pd.read_csv('../wta_points_predicted_player.csv')
+elif (t_type == "atp"):
+    df = pd.read_csv('../iid_vs_non_iid_atp_players_1e4trials.csv')
+    df_results = pd.read_csv('../atp_points_predicted_player.csv')
+
+df = add_ranking(df, df_results)
+
+plot_by_ranking(df)
+plot_deviation_histogram(df)
+plot_average_offset(df)
 
 print(df.columns)
-
-# plt.hist(df["average_games_iid"] - df["average_games"])
-# plt.show()
-
-# plot_iid_vs_non_iid_pyplot(df)
-
-# plt.scatter(delta_spw, -delta_pred)
-# plt.xlabel('spw_1_iid - spw_2_iid')
-# plt.ylabel('p_win_dynamic - p_win_iid')
-# plt.show()
-
-# plt.scatter(df["p_win_iid"], df["p_win_dynamic"] - df["p_win_iid"])
-# plt.show()
