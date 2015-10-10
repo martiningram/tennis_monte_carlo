@@ -1,9 +1,10 @@
 import pandas as pd
-# import plotly.plotly as py
-# from plotly.graph_objs import *
+import plotly.plotly as py
+from plotly.graph_objs import *
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import datetime
 
 # Given a list of labels and points (xs, ys), plots a scatter plot and labels
 # each point. plot_line optionally draws a linear fit through the points.
@@ -268,6 +269,288 @@ def plot_average_offset(df):
     plt = plot_annotated_scatter(names, spws, av_offsets)
     plt.show()
 
+def check_predictions(predictions_file, tournament, year, t_type):
+
+    save_name = "predictions " + tournament + " " + str(year) + ".csv"
+
+    if t_type != "atp":
+        print("Only atp match data available currently")
+        exit()
+
+    if year == 2014:
+        match_file = "matches_2014_atp.csv"
+
+    elif year == 2015:
+        match_file = "matches_loop_2015.csv"
+
+    df = pd.read_csv(predictions_file)
+    data = pd.read_csv(match_file)
+
+    results = list()
+
+    # Match rows:
+
+    for i,row in df.iterrows():
+
+        cur_p1 = row["Player 1"]
+        cur_p2 = row["Player 2"]
+
+        print(cur_p1, cur_p2)
+
+        cur_data = data[data["event_name"].str.lower().str.contains(tournament)]
+
+        # Match the current match
+
+        cur_match_data = cur_data[((cur_data["playerA"].str.lower() == cur_p1.lower()) & \
+                                   (cur_data["playerB"].str.lower() == cur_p2.lower()) | \
+                                   ((cur_data["playerA"].str.lower() == cur_p2.lower()) & \
+                                    (cur_data["playerB"].str.lower() == cur_p1.lower())))]
+
+        if (cur_match_data.shape[0] == 1):
+
+            cur_match_data = cur_match_data.iloc[0]
+
+            score = cur_match_data["score"]
+
+            player_a = cur_match_data["playerA"]
+            player_b = cur_match_data["playerB"]
+
+            # Calculate SPW:
+
+            fsp_a = cur_match_data["a_first_serve_hits"] / \
+                    float(cur_match_data["a_first_serve_total"])
+            fsw_a = cur_match_data["a_first_serve_won"] / \
+                    float(cur_match_data["a_first_serve_hits"])
+            ssw_a = cur_match_data["a_second_serve_won"] / \
+                    float(cur_match_data["a_second_serve_played"])
+
+            iid_a = fsp_a * fsw_a + (1 - fsp_a) * ssw_a
+
+            fsp_b = cur_match_data["b_first_serve_hits"] / \
+                    float(cur_match_data["b_first_serve_total"])
+            fsw_b = cur_match_data["b_first_serve_won"] / \
+                    float(cur_match_data["b_first_serve_hits"])
+            ssw_b = cur_match_data["b_second_serve_won"] / \
+                    float(cur_match_data["b_second_serve_played"])
+
+            iid_b = fsp_b * fsw_b + (1 - fsp_b) * ssw_b
+
+            p1_average_iid = iid_a if cur_match_data["playerA"].lower() == \
+                             row["Player 1"].lower() else iid_b
+            p2_average_iid = iid_b if cur_match_data["playerA"].lower() == \
+                             row["Player 1"].lower() else iid_a
+
+            p1_won = (cur_match_data["winner"].lower() == (row["Player 1"].lower()))
+
+            print(p1_average_iid, p2_average_iid, row["p1_iid_spw"], row["p2_iid_spw"])
+
+            results.append({"p1_won" : p1_won,
+                            "actual_spw_p1" : p1_average_iid,
+                            "actual_spw_p2" : p2_average_iid,
+                            "p1_spw_predicted" : row["p1_iid_spw"],
+                            "p2_spw_predicted" : row["p2_iid_spw"],
+                            "Player 1" : row["Player 1"],
+                            "Player 2" : row["Player 2"],
+                            "p1_prob" : row["p1_win_prob"]})
+            
+
+            if "RET" in score:
+                continue
+
+    results = pd.DataFrame(results)
+
+    brier = np.sum((results["p1_won"] - results["p1_prob"])**2) / results.shape[0]
+    print(brier)
+
+    if (results.shape[0] == 0):
+        print("No matches found.")
+        exit()
+
+    # Calculate overall difference
+
+    offsets_p1 = results["p1_spw_predicted"] - results["actual_spw_p1"]
+    offsets_p2 = results["p2_spw_predicted"] - results["actual_spw_p2"]
+    all_offsets = np.concatenate([offsets_p1.values, offsets_p2.values])
+
+    bias, variance = np.average(all_offsets), np.std(all_offsets)
+
+    pct = lambda x: str(round(x * 100, 1)) + "%"
+
+    print(bias, variance)
+
+    plt.hist(all_offsets, 20)
+    plt.xlabel("Absolute deviation from match average spw")
+    plt.ylabel("Frequency")
+    plt.title("spw offsets, " + tournament + " " + str(year) + ". Brier: " + \
+              str(round(brier,3)) + ", bias: " + pct(bias) + \
+              ", variance: " + pct(variance))
+    plt.savefig("Deviation histogram, " + tournament + " " + str(year) + ".png")
+    plt.close()
+
+    # Calculate delta distributions
+
+    deltas_predicted = results["p1_spw_predicted"] - results["p2_spw_predicted"]
+    deltas_actual = results["actual_spw_p1"] - results["actual_spw_p2"]
+
+    good_ones = (deltas_predicted * deltas_actual > 0)
+    bad_ones = ~good_ones
+
+    names = results["Player 1"] + " " + results["Player 2"]
+
+    plot = plot_annotated_scatter(names[good_ones],
+                                  deltas_predicted[good_ones],
+                                  deltas_actual[good_ones])
+
+    plot.title(tournament + " " + str(year) + " expected")
+    plot.xlabel("Expected advantage, player 1")
+    plot.ylabel("Match advantage, player 1")
+    plot.savefig(tournament + " " + str(year) + " expected.png")
+    plot.close()
+
+    plot = plot_annotated_scatter(names[bad_ones],
+                                  deltas_predicted[bad_ones],
+                                  deltas_actual[bad_ones])
+
+    plot.title(tournament + " " + str(year) + " surprises")
+    plot.xlabel("Expected advantage, player 1")
+    plot.ylabel("Match advantage, player 1")
+    plot.savefig(tournament + " " + str(year) + " surprises.png")
+    plot.close()
+
+    results.to_csv(save_name)
+
+def add_atp_data(filename, df):
+
+    data = pd.read_csv(filename)
+    print(data.columns)
+
+    results = list()
+
+    # Match rows:
+
+    for i,row in df.iterrows():
+
+        cur_p1 = row["Player 1"]
+        cur_p2 = row["Player 2"]
+
+        cur_tournament = row["tournament"].lower()
+
+        cur_tournament = "roland garros" if cur_tournament == "french open" \
+                         else cur_tournament
+
+        cur_data = data[data["event_name"].str.lower().str.contains(cur_tournament)]
+
+        # Match the current match
+
+        cur_match_data = cur_data[((cur_data["playerA"].str.lower() == cur_p1.lower()) & \
+                                   (cur_data["playerB"].str.lower() == cur_p2.lower()) | \
+                                   ((cur_data["playerA"].str.lower() == cur_p2.lower()) & \
+                                    (cur_data["playerB"].str.lower() == cur_p1.lower())))]
+
+        if (cur_match_data.shape[0] == 1):
+
+            cur_match_data = cur_match_data.iloc[0]
+
+            score = cur_match_data["score"]
+
+            player_a = cur_match_data["playerA"]
+            player_b = cur_match_data["playerB"]
+
+            fsp_a = cur_match_data["a_first_serve_hits"] / \
+                    float(cur_match_data["a_first_serve_total"])
+            fsw_a = cur_match_data["a_first_serve_won"] / \
+                    float(cur_match_data["a_first_serve_hits"])
+            ssw_a = cur_match_data["a_second_serve_won"] / \
+                    float(cur_match_data["a_second_serve_played"])
+
+            iid_a = fsp_a * fsw_a + (1 - fsp_a) * ssw_a
+
+            fsp_b = cur_match_data["b_first_serve_hits"] / \
+                    float(cur_match_data["b_first_serve_total"])
+            fsw_b = cur_match_data["b_first_serve_won"] / \
+                    float(cur_match_data["b_first_serve_hits"])
+            ssw_b = cur_match_data["b_second_serve_won"] / \
+                    float(cur_match_data["b_second_serve_played"])
+
+            iid_b = fsp_b * fsw_b + (1 - fsp_b) * ssw_b
+
+            p1_average_iid = iid_a if cur_match_data["playerA"].lower() == \
+                             row["Player 1"].lower() else iid_b
+            p2_average_iid = iid_b if cur_match_data["playerA"].lower() == \
+                             row["Player 1"].lower() else iid_a
+
+            print(p1_average_iid, p2_average_iid, row["p1_spw_iid"], row["p2_spw_iid"])
+
+            if "RET" in score:
+                continue
+
+            # split sets by spaces
+
+            split_score = score.split(" ")
+
+            games = 0
+
+            for cur_set in split_score:
+
+                split_cur_set = cur_set.split("-")
+
+                p1_games = int(split_cur_set[0])
+
+                p2_score = split_cur_set[1]
+
+                p2_score_split = p2_score.split('(')[0]
+                p2_score_split = p2_score_split.split(';')[0]
+
+                p2_games = int(p2_score_split)
+
+                games += p1_games + p2_games
+
+            cur_results = {"p1": cur_p1, "p2": cur_p2, "score": score, "games":
+                           games, "dynamic_games": row["average_games"],
+                           "iid_games": row["average_games_iid"], "p1_spw_iid" :
+                           row["p1_spw_iid"], "p2_spw_iid" : row["p2_spw_iid"],
+                           "p1_average_spw" : p1_average_iid, "p2_average_spw" :
+                           p2_average_iid}
+
+            results.append(cur_results)
+
+    results = pd.DataFrame(results)
+
+    spw_diff_model = results["p1_spw_iid"] - results["p2_spw_iid"]
+    spw_diff_av = results["p1_average_spw"] - results["p2_average_spw"]
+
+    plt.scatter(results["p1_average_spw"] - results["p2_average_spw"],
+                results["p1_spw_iid"] - results["p2_spw_iid"])
+    plt.show()
+
+    test = np.polyfit(spw_diff_av, spw_diff_model, 1)
+
+    print(test)
+
+    print(np.average(results["iid_games"] - results["games"]))
+    print(np.average(results["dynamic_games"] - results["games"]))
+
+def explore_input():
+
+    df = pd.read_csv("../wta_points_predicted_player_no_tournament_name.csv")
+
+    no_events = (df["tiebreak"] == False) & (df["breakpoint"] == False) & \
+                (df["before_breakpoint"] == False) 
+
+    no_advantage = df[(no_events) & (df["set_up"] == 0) & (df["set_down"] == 0)]
+    set_down = df[(no_events) & (df["set_up"] == 0) & (df["set_down"] == 1)]
+
+    difference = no_advantage["p_noniid"].values - set_down["p_noniid"].values
+
+    print(round(np.average(no_advantage["p_noniid"].values), 3),
+          round(np.average(set_down["p_noniid"].values), 3),
+          round(np.average(difference), 3), round(np.std(difference),3))
+
+    plt.scatter(no_advantage["p_noniid"].values, set_down["p_noniid"].values)
+    plt.show()
+
+    exit()
+
 t_type = "atp"
 
 if (t_type == "wta"):
@@ -279,8 +562,41 @@ elif (t_type == "atp"):
 
 df = add_ranking(df, df_results)
 
-plot_by_ranking(df)
-plot_deviation_histogram(df)
-plot_average_offset(df)
+# add_atp_data("matches_2014_atp.csv", df)
+
+class PredictionSet:
+    def __init__(self, predictions_file, tournament, year, t_type):
+        self.predictions_file = predictions_file
+        self.tournament = tournament
+        self.year = year
+        self.t_type = t_type
+
+predictions = [PredictionSet("../ausopen_predictions_iid.csv",
+                             "australian open",
+                             2015,
+                             "atp"),
+               PredictionSet("../usopen_predictions_iid.csv",
+                             "us open",
+                             2014,
+                             "atp"),
+               PredictionSet("../wimbledon_predictions_iid.csv",
+                             "wimbledon",
+                             2014,
+                             "atp")]
+
+predictions_file = "../ausopen_predictions_iid.csv"
+tournament = "australian open"
+year = 2015
+t_type = "atp"
+
+for p_set in predictions:
+    check_predictions(p_set.predictions_file,
+                      p_set.tournament,
+                      p_set.year,
+                      p_set.t_type)
+
+# plot_by_ranking(df)
+# plot_deviation_histogram(df)
+# plot_average_offset(df)
 
 print(df.columns)

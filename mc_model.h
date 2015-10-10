@@ -16,7 +16,7 @@ class MCModel {
 
   std::vector<Match> matches_played_;
 
-  std::default_random_engine generator_;
+  static std::default_random_engine generator_;
 
   std::string p1_, p2_;
 

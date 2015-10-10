@@ -6,12 +6,13 @@
 
 MCModel::MCModel(std::string p1, std::string p2, bool best_of_five,
                  unsigned int num_matches, bool verbose)
-    : generator_(std::time(0)),
-      p1_(p1),
+    : p1_(p1),
       p2_(p2),
       best_of_five_(best_of_five),
       kNumMatches_(num_matches),
       verbose_(verbose) {}
+
+std::default_random_engine MCModel::generator_(std::time(0));
 
 Match MCModel::PlayMatch() {
   // Coin toss:
@@ -145,8 +146,9 @@ Tiebreak *MCModel::PlayTiebreak(std::string cur_server,
                     static_cast<int>(s.player_points(cur_returner)));
   };
 
-  // Check if the tiebreak is over:
-  if (difference(cur_score) < 2) {
+  // If the tiebreak is not over, we need to continue until one player has an
+  // advantage:
+  while (difference(cur_score) < 2) {
     if ((cur_score.player_points(cur_server) +
          cur_score.player_points(cur_returner)) %
             2 ==
@@ -154,15 +156,12 @@ Tiebreak *MCModel::PlayTiebreak(std::string cur_server,
       // Change the server
       std::swap(cur_server, cur_returner);
     }
-    // Need to continue until a player has an advantage:
-    while (difference(cur_score) < 2) {
-      Point cur_point(cur_server, cur_returner, cur_score);
-      PlayPoint(cur_point);
-      std::string point_winner =
-          (cur_point.server_won()) ? (cur_server) : (cur_returner);
-      cur_score.PlayerWinsPoint(point_winner);
-      points.push_back(cur_point);
-    }
+    Point cur_point(cur_server, cur_returner, cur_score);
+    PlayPoint(cur_point);
+    std::string point_winner =
+        (cur_point.server_won()) ? (cur_server) : (cur_returner);
+    cur_score.PlayerWinsPoint(point_winner);
+    points.push_back(cur_point);
   }
 
   // The tiebreak is now over; update score and return it.
