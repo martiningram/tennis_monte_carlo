@@ -19,13 +19,9 @@ class Match {
         bool best_of_five);
 
   std::string final_score() const;
-
   const std::vector<Set> &sets() const;
-
   std::string server_at_start() const;
-
   unsigned int total_games() const;
-
   std::string winner() const;
 };
 
