@@ -16,6 +16,8 @@ double FindAverageOf(const std::vector<Match> &matches,
 double AverageMatchLength(const std::vector<Match> &matches);
 
 double AverageNumberOfSets(const std::vector<Match> &matches);
+
+double PlayerServedFirst(std::string player, const std::vector<Match> &matches);
 }
 
 #endif

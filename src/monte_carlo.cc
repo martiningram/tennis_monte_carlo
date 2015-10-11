@@ -9,15 +9,23 @@
 #include "importance_mc_model.h"
 #include <sstream>
 #include <assert.h>
+#include "match_stats.h"
+#include "tools.h"
 
-void run_model() {
-  std::vector<ModelData> m =
-      ModelData::ImportFromFile("wimbledon_iid_2014.csv");
+void run_model(std::string import_file, std::string output_name, bool bo5,
+               bool recalculate = false) {
+  if (Tools::FileExists(output_name) && !recalculate) {
+    std::cout << "Already calculated. Use recalculate option to if "
+                 "desired." << std::endl;
+    return;
+  }
+
+  std::vector<ModelData> m = ModelData::ImportFromFile(import_file);
 
   std::ofstream o;
+  o.open(output_name);
 
-  o.open("wimbledon_prediction.csv");
-
+  // Write the header:
   o << "Player 1"
     << ","
     << "Player 2"
@@ -40,34 +48,14 @@ void run_model() {
     << ","
     << "average_games_iid" << std::endl;
 
+  const unsigned int kSimulations = 1E4;
+
   for (const ModelData &cur_match : m) {
-    bool bo5 = true;
-
-    const unsigned int kSimulations = 1E4;
-
+    // Run the adjusted model:
     AdjustedMCModel adj(cur_match.p1(), cur_match.p2(), bo5, cur_match,
                         kSimulations);
 
-    std::cout << cur_match.p1() << " has the following probs: ";
-
-    for (auto entry : cur_match.model_probs_p1()) {
-      for (auto b : entry.first) {
-        std::cout << b << " ";
-      }
-
-      std::cout << entry.second << std::endl;
-    }
-
-    std::cout << cur_match.p2() << " has the following probs: ";
-
-    for (auto entry : cur_match.model_probs_p2()) {
-      for (auto b : entry.first) {
-        std::cout << b << " ";
-      }
-
-      std::cout << entry.second << std::endl;
-    }
-
+    // Run the iid model:
     std::map<std::string, double> iid_probs;
 
     iid_probs[cur_match.p1()] =
@@ -78,44 +66,21 @@ void run_model() {
     IIDMCModel iid_model(cur_match.p1(), cur_match.p2(), bo5, iid_probs,
                          kSimulations);
 
+    // Find the matches:
     const std::vector<Match> &matches = adj.matches();
     const std::vector<Match> &iid_matches = iid_model.matches();
 
-    unsigned int i = std::count_if(
-        matches.begin(), matches.end(),
-        [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
+    // Calculate quantities of interest:
+    double p1_served_first =
+        MatchStats::PlayerServedFirst(cur_match.p1(), matches);
+    double average_sets = MatchStats::AverageNumberOfSets(matches);
+    double average_sets_iid = MatchStats::AverageNumberOfSets(iid_matches);
+    double average_games = MatchStats::AverageMatchLength(matches);
+    double average_games_iid = MatchStats::AverageMatchLength(iid_matches);
+    double non_iid_win_prob = MatchStats::MatchWinProb(cur_match.p1(), matches);
+    double iid_win_prob = MatchStats::MatchWinProb(cur_match.p1(), iid_matches);
 
-    unsigned int iid_i = std::count_if(
-        iid_matches.begin(), iid_matches.end(),
-        [cur_match](const Match &m) { return m.winner() == cur_match.p1(); });
-
-    unsigned int p1_served_first = std::count_if(matches.begin(), matches.end(),
-                                                 [cur_match](const Match &m) {
-      return m.server_at_start() == cur_match.p1();
-    });
-
-    unsigned int set_sum = 0;
-    unsigned int set_sum_iid = 0;
-
-    unsigned int game_sum = 0;
-    unsigned int game_sum_iid = 0;
-
-    for (unsigned int i = 0; i < kSimulations; ++i) {
-      set_sum += matches[i].sets().size();
-      set_sum_iid += iid_matches[i].sets().size();
-      game_sum += matches[i].total_games();
-      game_sum_iid += iid_matches[i].total_games();
-    }
-
-    double average_sets = set_sum / static_cast<double>(kSimulations);
-    double average_sets_iid = set_sum_iid / static_cast<double>(kSimulations);
-
-    double average_games = game_sum / static_cast<double>(kSimulations);
-    double average_games_iid = game_sum_iid / static_cast<double>(kSimulations);
-
-    double iid_win_prob = (iid_i / static_cast<double>(kSimulations));
-    double non_iid_win_prob = (i / static_cast<double>(kSimulations));
-
+    // Output them:
     std::cout << "Match of " << cur_match.p1() << " against " << cur_match.p2()
               << std::endl;
     std::cout << "IID probability: " << iid_win_prob * 100 << "%" << std::endl;
@@ -125,10 +90,10 @@ void run_model() {
               << "; non-IID: " << average_sets << std::endl;
     std::cout << "IID games: " << average_games_iid
               << "; non-IID: " << average_games << std::endl;
-    std::cout << cur_match.p1() << " served first "
-              << p1_served_first / static_cast<double>(kSimulations) * 100
+    std::cout << cur_match.p1() << " served first " << p1_served_first * 100
               << "% of the time." << std::endl;
 
+    // Save them:
     o << cur_match.p1() << "," << cur_match.p2() << ","
       << cur_match.match_title() << "," << iid_win_prob << ","
       << non_iid_win_prob << ","
@@ -236,7 +201,7 @@ void run_iid_prediction() {
     double win_prob_p1 = static_cast<double>(win_count) / kSimulations;
     std::cout << "Given the serve percentages of " << p.second.first << " and "
               << p.second.second << ", " << p.first.first << " has "
-              << win_prob_p1 * 100 << "\% chance of winning against "
+              << win_prob_p1 * 100 << "% chance of winning against "
               << p.first.second << std::endl;
     o << p.first.first << "," << p.first.second << "," << p.second.first << ","
       << p.second.second << "," << win_prob_p1 << std::endl;
@@ -540,4 +505,24 @@ void verbose_test_run_importance() {
   IIDMCModel iid_model(test.p1(), test.p2(), bo5, iid_probs, kSimulations);
 }
 
-int main() { run_iid_prediction(); }
+void CalculateNonIIDPredictionsATP() {
+  bool bo5 = true;
+
+  std::vector<std::string> to_predict{
+      "wimbledon_prediction_2014.csv", "usopen_prediction_2014.csv",
+      "frenchopen_prediction_2015.csv", "ausopen_prediction_2015.csv"};
+
+  std::vector<std::string> names{"wimbledon2014", "usopen2014",
+                                 "frenchopen2015", "ausopen2015"};
+
+  for (unsigned int i = 0; i < to_predict.size(); ++i) {
+    std::string cur_output_name = std::string("iid_vs_non_iid_prediction_") +
+                                  names[i] + std::string(".csv");
+
+    std::string cur_prediction_file = to_predict[i];
+
+    run_model(cur_prediction_file, cur_output_name, bo5);
+  }
+}
+
+int main() { CalculateNonIIDPredictionsATP(); }

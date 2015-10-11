@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 
+#include "csv_file.h"
 #include "model_data.h"
 #include "tools.h"
 
@@ -72,10 +73,10 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
   // errors like before...)
 
   std::vector<std::string> expected_order{
-      "\"tiebreak\"",  "\"breakpoint\"",    "\"before_breakpoint\"",
-      "\"set_up\"",    "\"set_down\"",      "\"serving\"",
-      "\"returning\"", "\"serving_match\"", "\"returning_match\"",
-      "\"p_iid\"",     "\"p_noniid\""};
+      "\"tiebreak\"",        "\"breakpoint\"", "\"before_breakpoint\"",
+      "\"set_up\"",          "\"set_down\"",   "\"point_importance\"",
+      "\"serving\"",         "\"returning\"",  "\"serving_match\"",
+      "\"returning_match\"", "\"p_iid\"",      "\"p_non_iid\""};
 
   std::getline(i, cur_line);
 
@@ -115,6 +116,11 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
     std::string set_down;
     std::getline(iss, set_down, ',');
     cur_vals[4] = (set_down == "1");
+
+    // Skipping importance
+    std::string importance;
+    std::getline(iss, importance, ',');
+    assert(importance == std::string("0.050849018051122"));
 
     std::getline(iss, cur_player, ',');
     Tools::Trim(cur_player, '"');

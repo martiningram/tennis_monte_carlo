@@ -26,3 +26,11 @@ double MatchStats::AverageNumberOfSets(const std::vector<Match> &matches) {
   auto quantity = [](const Match &m) { return m.sets().size(); };
   return FindAverageOf(matches, quantity);
 }
+
+double MatchStats::PlayerServedFirst(std::string player,
+                                     const std::vector<Match> &matches) {
+  auto quantity = [player](const Match &m) {
+    return (m.server_at_start() == player) ? 1 : 0;
+  };
+  return FindAverageOf(matches, quantity);
+}
