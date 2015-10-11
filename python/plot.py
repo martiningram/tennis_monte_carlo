@@ -121,7 +121,7 @@ def plot_average_deviation(df):
     plt.scatter(xs, ys)
     plt.show()
 
-def add_ranking(df, df_results):
+def add_ranking(df, df_results, tournament):
 
     print(df.columns)
     print(df_results.columns)
@@ -153,8 +153,8 @@ def add_ranking(df, df_results):
 
                 cur_results = {"p1_rank": res_row["server_rank"],
                                "p2_rank": res_row["return_rank"],
-                               "tournament" : res_row["tournament"],
                                "p1_won" : res_row["server_win"],
+                               "tournament" : tournament,
                                "higher_ranked" : higher_ranked,
                                "lower_ranked" : lower_ranked,
                                "higher_ranked_iid" : higher_ranked_iid,
@@ -162,10 +162,8 @@ def add_ranking(df, df_results):
                                "higher_ranked_won" : 1 if (res_row["server_win"] == 1 and \
                                res_row["server_rank"] == higher_ranked) or  \
                                (res_row["server_win"] == 0 and \
-                                res_row["return_rank"] == higher_ranked) \
-                               else 0,
-                               "delta_p" : mc_row["p_win_dynamic"] - \
-                mc_row["p_win_iid"]}
+                                res_row["return_rank"] == higher_ranked) else 0,
+                               "delta_p" : mc_row["p_win_dynamic"] - mc_row["p_win_iid"]}
 
                 results.append(cur_results)
                 processed_matches.append(res_row["serving_match"])
@@ -481,6 +479,11 @@ def add_atp_data(filename, df):
 
             print(p1_average_iid, p2_average_iid, row["p1_spw_iid"], row["p2_spw_iid"])
 
+            delta_average = p1_average_iid - p2_average_iid
+            delta_expected = row["p1_spw_iid"] - row["p2_spw_iid"]
+
+            delta_diff = delta_expected - delta_average
+
             if "RET" in score:
                 continue
 
@@ -510,25 +513,21 @@ def add_atp_data(filename, df):
                            "iid_games": row["average_games_iid"], "p1_spw_iid" :
                            row["p1_spw_iid"], "p2_spw_iid" : row["p2_spw_iid"],
                            "p1_average_spw" : p1_average_iid, "p2_average_spw" :
-                           p2_average_iid}
+                           p2_average_iid, "delta_diff": delta_diff}
 
             results.append(cur_results)
 
     results = pd.DataFrame(results)
 
-    spw_diff_model = results["p1_spw_iid"] - results["p2_spw_iid"]
-    spw_diff_av = results["p1_average_spw"] - results["p2_average_spw"]
-
-    plt.scatter(results["p1_average_spw"] - results["p2_average_spw"],
-                results["p1_spw_iid"] - results["p2_spw_iid"])
-    plt.show()
-
-    test = np.polyfit(spw_diff_av, spw_diff_model, 1)
-
-    print(test)
+    offsets = np.concatenate([(results["p1_spw_iid"] - \
+                               results["p1_average_spw"]).values,
+                              (results["p2_spw_iid"] - \
+                               results["p2_average_spw"]).values])
 
     print(np.average(results["iid_games"] - results["games"]))
     print(np.average(results["dynamic_games"] - results["games"]))
+    print(np.average(results["delta_diff"]), np.std(results["delta_diff"]))
+    print(np.average(offsets), np.std(offsets))
 
 def explore_input():
 
@@ -554,46 +553,45 @@ def explore_input():
 t_type = "atp"
 
 if (t_type == "wta"):
-    df = pd.read_csv('../iid_vs_non_iid_wta_players_1e4trials.csv')
-    df_results = pd.read_csv('../wta_points_predicted_player.csv')
+    pass
 elif (t_type == "atp"):
-    df = pd.read_csv('../iid_vs_non_iid_atp_players_1e4trials.csv')
-    df_results = pd.read_csv('../atp_points_predicted_player.csv')
+    df = pd.read_csv('../iid_vs_non_iid_prediction_ausopen2015.csv')
+    df_results = pd.read_csv('../ausopen_prediction_2015.csv')
 
-df = add_ranking(df, df_results)
+df = add_ranking(df, df_results, "australian open")
 
-# add_atp_data("matches_2014_atp.csv", df)
+add_atp_data("matches_loop_2015.csv", df)
 
-class PredictionSet:
-    def __init__(self, predictions_file, tournament, year, t_type):
-        self.predictions_file = predictions_file
-        self.tournament = tournament
-        self.year = year
-        self.t_type = t_type
-
-predictions = [PredictionSet("../ausopen_predictions_iid.csv",
-                             "australian open",
-                             2015,
-                             "atp"),
-               PredictionSet("../usopen_predictions_iid.csv",
-                             "us open",
-                             2014,
-                             "atp"),
-               PredictionSet("../wimbledon_predictions_iid.csv",
-                             "wimbledon",
-                             2014,
-                             "atp")]
-
-predictions_file = "../ausopen_predictions_iid.csv"
-tournament = "australian open"
-year = 2015
-t_type = "atp"
-
-for p_set in predictions:
-    check_predictions(p_set.predictions_file,
-                      p_set.tournament,
-                      p_set.year,
-                      p_set.t_type)
+# class PredictionSet:
+#     def __init__(self, predictions_file, tournament, year, t_type):
+#         self.predictions_file = predictions_file
+#         self.tournament = tournament
+#         self.year = year
+#         self.t_type = t_type
+# 
+# predictions = [PredictionSet("../ausopen_predictions_iid.csv",
+#                              "australian open",
+#                              2015,
+#                              "atp"),
+#                PredictionSet("../usopen_predictions_iid.csv",
+#                              "us open",
+#                              2014,
+#                              "atp"),
+#                PredictionSet("../wimbledon_predictions_iid.csv",
+#                              "wimbledon",
+#                              2014,
+#                              "atp")]
+# 
+# predictions_file = "../ausopen_predictions_iid.csv"
+# tournament = "australian open"
+# year = 2015
+# t_type = "atp"
+# 
+# for p_set in predictions:
+#     check_predictions(p_set.predictions_file,
+#                       p_set.tournament,
+#                       p_set.year,
+#                       p_set.t_type)
 
 # plot_by_ranking(df)
 # plot_deviation_histogram(df)

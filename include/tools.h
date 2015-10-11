@@ -10,6 +10,8 @@ double ReadDouble(std::istringstream& iss);
 int ReadInt(std::istringstream& iss);
 std::string ReadString(std::istringstream& iss);
 bool FileExists(std::string filename);
+std::string ToString(double d);
+std::string ToString(unsigned int i);
 }
 
 #endif

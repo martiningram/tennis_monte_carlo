@@ -37,3 +37,15 @@ bool Tools::FileExists(std::string filename) {
   i.open(filename);
   return (i.good());
 }
+
+std::string Tools::ToString(double d) {
+  std::stringstream s;
+  s << d;
+  return s.str();
+}
+
+std::string Tools::ToString(unsigned int i) {
+  std::stringstream s;
+  s << i;
+  return s.str();
+}

@@ -355,22 +355,19 @@ void test_importance_version() {
 }
 
 void TestMatchLengthConvergence() {
-  std::vector<unsigned int> num_simulations{
-      10,                            100,   200,
-      500,                           1000,  2000,
-      5000,                          10000, static_cast<unsigned int>(5E4),
-      static_cast<unsigned int>(1E5)};
+  std::vector<unsigned int> num_simulations{10,   100,  200,  500,
+                                            1000, 2000, 5000, 10000};
 
   std::ofstream o;
 
-  o.open("convergence.csv");
+  o.open("convergence_bo5.csv");
 
   std::map<std::string, double> cur_spws;
 
   const unsigned int kNumSimulationsEach = 10;
 
-  cur_spws["Player 1"] = 0.5;
-  cur_spws["Player 2"] = 0.5;
+  cur_spws["Player 1"] = 0.01;
+  cur_spws["Player 2"] = 0.01;
 
   o << "No. of simulations"
     << ","
@@ -378,7 +375,7 @@ void TestMatchLengthConvergence() {
 
   for (unsigned int simulation_no : num_simulations) {
     for (unsigned int i = 0; i < kNumSimulationsEach; ++i) {
-      IIDMCModel cur_simulations("Player 1", "Player 2", false, cur_spws,
+      IIDMCModel cur_simulations("Player 1", "Player 2", true, cur_spws,
                                  simulation_no);
 
       unsigned long long total_games_played = 0;
@@ -525,4 +522,4 @@ void CalculateNonIIDPredictionsATP() {
   }
 }
 
-int main() { CalculateNonIIDPredictionsATP(); }
+int main() { TestMatchLengthConvergence(); }
