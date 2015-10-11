@@ -15,8 +15,8 @@
 void run_model(std::string import_file, std::string output_name, bool bo5,
                bool recalculate = false) {
   if (Tools::FileExists(output_name) && !recalculate) {
-    std::cout << "Already calculated. Use recalculate option to if "
-                 "desired." << std::endl;
+    std::cout << "Already calculated " << import_file
+              << ". Use recalculate option if desired." << std::endl;
     return;
   }
 

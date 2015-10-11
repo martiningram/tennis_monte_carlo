@@ -2,6 +2,7 @@
 #define CSV_READER_H
 
 #include <fstream>
+#include <map>
 #include <vector>
 #include <string>
 
@@ -9,6 +10,7 @@ class CSVFile {
  public:
   CSVFile(std::string csv_file);
   bool NextLine();
+  bool ColumnExists(std::string name) const;
   std::string FetchCol(std::string col_name) const;
   const std::vector<std::string> &col_names() const;
 

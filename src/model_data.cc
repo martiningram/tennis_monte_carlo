@@ -53,12 +53,6 @@ double ModelData::ServeWinProbabilityIID(std::string player) const {
 }
 
 std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
-  std::ifstream i;
-  i.open(csv_file);
-  assert(i.good());
-
-  std::string cur_line;
-
   struct PlayerMatchData {
     std::map<std::array<bool, 5>, double> non_iid;
     double iid;
@@ -66,92 +60,44 @@ std::vector<ModelData> ModelData::ImportFromFile(std::string csv_file) {
   };
 
   std::vector<ModelData> results;
-
   std::map<std::string, std::map<std::string, PlayerMatchData>> data;
 
-  // Make sure header conforms to what I think it conforms to: (to avoid parsing
-  // errors like before...)
+  CSVFile f(csv_file);
 
-  std::vector<std::string> expected_order{
-      "\"tiebreak\"",        "\"breakpoint\"", "\"before_breakpoint\"",
-      "\"set_up\"",          "\"set_down\"",   "\"point_importance\"",
-      "\"serving\"",         "\"returning\"",  "\"serving_match\"",
-      "\"returning_match\"", "\"p_iid\"",      "\"p_non_iid\""};
-
-  std::getline(i, cur_line);
-
-  {
-    std::istringstream first_line(cur_line);
-    for (std::string cur_element : expected_order) {
-      std::string cur_header;
-      std::getline(first_line, cur_header, ',');
-      assert(cur_header == cur_element);
-    }
+  // This column may have different names:
+  std::string dynamic_col_name;
+  if (f.ColumnExists("p_noniid")) {
+    dynamic_col_name = "p_noniid";
+  } else if (f.ColumnExists("p_non_iid")) {
+    dynamic_col_name = "p_non_iid";
+  } else {
+    // We should not be here...
+    assert(false);
   }
 
-  while (std::getline(i, cur_line)) {
-    std::istringstream iss(cur_line);
+  while (f.NextLine()) {
+    bool tiebreak = f.FetchCol("tiebreak") == "TRUE";
+    bool breakpoint = f.FetchCol("breakpoint") == "TRUE";
+    bool before_breakpoint = f.FetchCol("before_breakpoint") == "TRUE";
+    bool set_up = f.FetchCol("set_up") == "1";
+    bool set_down = f.FetchCol("set_down") == "1";
 
-    std::array<bool, 5> cur_vals;
-    std::string cur_player;
-    std::string cur_opponent;
-    std::string cur_match;
+    std::array<bool, 5> cur_vals{tiebreak, breakpoint, before_breakpoint,
+                                 set_up, set_down};
 
-    std::string tiebreak;
-    std::getline(iss, tiebreak, ',');
-    cur_vals[0] = (tiebreak == "TRUE");
+    std::string cur_player = f.FetchCol("serving");
+    std::string cur_opponent = f.FetchCol("returning");
+    std::string cur_match = f.FetchCol("serving_match");
 
-    std::string breakpoint;
-    std::getline(iss, breakpoint, ',');
-    cur_vals[1] = (breakpoint == "TRUE");
-
-    std::string before_breakpoint;
-    std::getline(iss, before_breakpoint, ',');
-    cur_vals[2] = (before_breakpoint == "TRUE");
-
-    std::string set_up;
-    std::getline(iss, set_up, ',');
-    cur_vals[3] = (set_up == "1");
-
-    std::string set_down;
-    std::getline(iss, set_down, ',');
-    cur_vals[4] = (set_down == "1");
-
-    // Skipping importance
-    std::string importance;
-    std::getline(iss, importance, ',');
-    assert(importance == std::string("0.050849018051122"));
-
-    std::getline(iss, cur_player, ',');
-    Tools::Trim(cur_player, '"');
-    std::getline(iss, cur_opponent, ',');
-    Tools::Trim(cur_opponent, '"');
-    std::getline(iss, cur_match, ',');
-
-    // Returning match:
-    std::getline(iss, cur_match, ',');
-    Tools::Trim(cur_match, '"');
-
-    // TODO: Add an assert for the headers!!
     // Need to cut off the last name to have match name. Find colon:
-
     std::size_t last_char = cur_match.rfind(':');
     cur_match = cur_match.substr(0, last_char);
 
-    double probability;
-    double probability_iid;
+    double p_dynamic = std::stod(f.FetchCol(dynamic_col_name));
+    double p_iid = std::stod(f.FetchCol("p_iid"));
 
-    std::string p_iid;
-    std::string p_non_iid;
-
-    std::getline(iss, p_iid, ',');
-    std::getline(iss, p_non_iid, ',');
-
-    probability = std::stod(p_non_iid);
-    probability_iid = std::stod(p_iid);
-
-    data[cur_match][cur_player].non_iid[cur_vals] = probability;
-    data[cur_match][cur_player].iid = probability_iid;
+    data[cur_match][cur_player].non_iid[cur_vals] = p_dynamic;
+    data[cur_match][cur_player].iid = p_iid;
     data[cur_match][cur_player].opponent = cur_opponent;
   }
 
