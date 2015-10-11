@@ -13,13 +13,15 @@ class CSVWriter {
    * @param first_line is the first line to write to the csv. The columns will
    * be determined automatically from the map.
    */
-  CSVWriter(std::string csv_name,
-            const std::map<std::string, std::string> &first_line);
+  CSVWriter(std::string csv_name);
 
-  void WriteLine(std::map<std::string, std::string> line);
+  void WriteLine(const std::map<std::string, std::string> &line);
+
   ~CSVWriter();
 
  private:
+  void WriteHeaders(const std::map<std::string, std::string> &line);
+  bool first_line_written_;
   std::ofstream o_;
   std::vector<std::string> headers_;
 };

@@ -20,6 +20,7 @@ class Match {
 
   std::string final_score() const;
   const std::vector<Set> &sets() const;
+  std::pair<std::string, std::string> players() const;
   std::string server_at_start() const;
   unsigned int total_games() const;
   std::string winner() const;

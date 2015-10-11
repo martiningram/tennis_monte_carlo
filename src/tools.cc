@@ -49,3 +49,15 @@ std::string Tools::ToString(unsigned int i) {
   s << i;
   return s.str();
 }
+
+std::vector<std::string> Tools::Split(std::string s, char on) {
+  std::istringstream i(s);
+  std::vector<std::string> result;
+  std::string cur_tok;
+
+  while (std::getline(i, cur_tok, on)) {
+    result.emplace_back(cur_tok);
+  }
+
+  return result;
+}

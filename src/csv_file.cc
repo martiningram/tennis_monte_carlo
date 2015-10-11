@@ -56,3 +56,24 @@ std::string CSVFile::FetchCol(std::string col_name) const {
 bool CSVFile::ColumnExists(std::string name) const {
   return std::find(columns_.begin(), columns_.end(), name) != columns_.end();
 }
+
+const std::map<std::string, std::string> &CSVFile::cur_line() const {
+  return cur_line_;
+}
+
+// Returns an empty map if no matches found.
+std::vector<std::map<std::string, std::string>> CSVFile::FindInFile(
+    std::string filename,
+    std::function<bool(const std::map<std::string, std::string> &)> matches) {
+  CSVFile f(filename);
+
+  std::vector<std::map<std::string, std::string>> results;
+
+  while (f.NextLine()) {
+    if (matches(f.cur_line())) {
+      results.emplace_back(f.cur_line());
+    }
+  }
+
+  return results;
+}

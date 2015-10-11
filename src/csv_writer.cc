@@ -2,12 +2,13 @@
 #include <assert.h>
 #include <algorithm>
 
-CSVWriter::CSVWriter(std::string csv_name,
-                     const std::map<std::string, std::string> &first_line) {
+CSVWriter::CSVWriter(std::string csv_name) : first_line_written_(false) {
   o_.open(csv_name);
   assert(o_.good());
+}
 
-  for (const auto &p : first_line) {
+void CSVWriter::WriteHeaders(const std::map<std::string, std::string> &line) {
+  for (const auto &p : line) {
     headers_.push_back(p.first);
   }
 
@@ -18,13 +19,18 @@ CSVWriter::CSVWriter(std::string csv_name,
 
   // Write the last element and terminate line:
   o_ << headers_.back() << std::endl;
-
-  // Write the first line:
-  WriteLine(first_line);
 }
 
-void CSVWriter::WriteLine(std::map<std::string, std::string> line) {
+void CSVWriter::WriteLine(const std::map<std::string, std::string> &line) {
+  // Make sure file is still writable:
   assert(o_.good());
+
+  // Write headers if necessary:
+  if (!first_line_written_) {
+    WriteHeaders(line);
+    first_line_written_ = true;
+  }
+
   // Ensure the line is complete:
   // Same number of elements:
   assert(line.size() == headers_.size());
@@ -37,11 +43,11 @@ void CSVWriter::WriteLine(std::map<std::string, std::string> line) {
   // Write to file:
   for (unsigned int i = 0; i < headers_.size() - 1; ++i) {
     const std::string &cur_header = headers_[i];
-    o_ << line[cur_header] << ",";
+    o_ << line.find(cur_header)->second << ",";
   }
 
   // Write last element and terminate:
-  o_ << line[headers_.back()] << std::endl;
+  o_ << line.find(headers_.back())->second << std::endl;
 }
 
 CSVWriter::~CSVWriter() { o_.close(); }

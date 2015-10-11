@@ -53,3 +53,7 @@ unsigned int Match::total_games() const {
 }
 
 std::string Match::server_at_start() const { return server_; }
+
+std::pair<std::string, std::string> Match::players() const {
+  return std::make_pair(server_, returner_);
+}

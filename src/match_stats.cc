@@ -34,3 +34,18 @@ double MatchStats::PlayerServedFirst(std::string player,
   };
   return FindAverageOf(matches, quantity);
 }
+
+MatchStats::SummaryStats MatchStats::Summarise(
+    const std::vector<Match> &matches) {
+  auto players = matches.front().players();
+
+  std::map<std::string, double> spws;
+
+  spws[players.first] = MatchWinProb(players.first, matches);
+  spws[players.second] = 1 - spws[players.first];
+
+  double average_length = AverageMatchLength(matches);
+  double average_num_sets = AverageNumberOfSets(matches);
+
+  return MatchStats::SummaryStats(spws, average_length, average_num_sets);
+}
