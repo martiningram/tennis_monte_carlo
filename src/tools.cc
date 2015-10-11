@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 #include "exceptions.h"
 
 std::string& Tools::Trim(std::string& str, char c) {
@@ -29,4 +30,10 @@ std::string Tools::ReadString(std::istringstream& iss) {
   std::string string_version;
   std::getline(iss, string_version, ',');
   return string_version;
+}
+
+bool Tools::FileExists(std::string filename) {
+  std::ifstream i;
+  i.open(filename);
+  return (i.good());
 }
