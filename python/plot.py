@@ -524,8 +524,10 @@ def add_atp_data(filename, df):
                               (results["p2_spw_iid"] - \
                                results["p2_average_spw"]).values])
 
-    print(np.average(results["iid_games"] - results["games"]))
-    print(np.average(results["dynamic_games"] - results["games"]))
+    print(np.average(results["iid_games"] - results["games"]),
+          np.std(results["iid_games"] - results["games"]) / np.sqrt(results.shape[0]))
+    print(np.average(results["dynamic_games"] - results["games"]),
+          np.std(results["dynamic_games"] - results["games"]) / np.sqrt(results.shape[0]))
     print(np.average(results["delta_diff"]), np.std(results["delta_diff"]))
     print(np.average(offsets), np.std(offsets))
 

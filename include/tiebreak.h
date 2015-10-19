@@ -19,6 +19,8 @@ class Tiebreak {
 
   std::string winner() const;
   std::string server() const;
+
+  const std::vector<Point> &points() const;
 };
 
 #endif

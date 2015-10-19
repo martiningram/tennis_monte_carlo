@@ -30,3 +30,5 @@ std::ostream &operator<<(std::ostream &o, const Tiebreak &t) {
                                     : t.final_score_.second);
   return o;
 }
+
+const std::vector<Point> &Tiebreak::points() const { return points_; }

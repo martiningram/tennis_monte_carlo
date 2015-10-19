@@ -2,6 +2,7 @@
 #define MATCH_H
 
 #include "set.h"
+#include "point.h"
 #include <string>
 #include <vector>
 
@@ -24,6 +25,8 @@ class Match {
   std::string server_at_start() const;
   unsigned int total_games() const;
   std::string winner() const;
+
+  std::vector<Point> GetServicePoints(std::string player) const;
 };
 
 #endif

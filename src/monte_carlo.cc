@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <assert.h>
+#include <functional>
 
 #include "iid_mc_model.h"
 #include "adjusted_mc_model.h"
@@ -15,7 +16,97 @@
 #include "csv_writer.h"
 #include "csv_file.h"
 
-void run_model(std::string import_file, std::string output_name, bool bo5,
+std::pair<std::map<std::string, double>, int> LookupSPW(
+    std::string tournament_name, std::string year, std::string p1,
+    std::string p2) {
+  std::map<std::string, double> result;
+
+  if (tournament_name == std::string("French Open")) {
+    return std::make_pair(result, -1);
+  }
+
+  auto criterion =
+      [tournament_name, p1, p2](const std::map<std::string, std::string> &m) {
+    return ((m.find("event_name"))->second).find(tournament_name) !=
+               std::string::npos &&
+           ((Tools::ToLower((m.find("playerA"))->second) ==
+                 Tools::ToLower(p1) &&
+             Tools::ToLower((m.find("playerB"))->second) ==
+                 Tools::ToLower(p2)) ||
+            (Tools::ToLower((m.find("playerA"))->second) ==
+                 Tools::ToLower(p2) &&
+             Tools::ToLower((m.find("playerB"))->second) ==
+                 Tools::ToLower(p1)));
+  };
+
+  std::string filename;
+
+  if (year == "2015") {
+    filename = "python/matches_2015_loop.csv";
+  } else if (year == "2014") {
+    filename = "python/matches_2014_atp.csv";
+  } else {
+    // return empty map
+    return std::make_pair(result, -1);
+  }
+
+  std::cout << "Searching for " << p1 << " vs. " << p2 << " in " << filename
+            << " at event " << tournament_name << std::endl;
+
+  auto matches_found = CSVFile::FindInFile(filename, criterion);
+
+  if (matches_found.size() != 1) {
+    std::cout << "No matches found in local database." << std::endl;
+    // return empty map
+    return std::make_pair(result, -1);
+  }
+
+  std::map<std::string, std::string> row = matches_found.front();
+
+  // Calculate spw:
+  double fsp_1 = std::stod(row["a_first_serve_played"]) /
+                 std::stod(row["a_first_serve_total"]);
+  double fsw_1 = std::stod(row["a_first_serve_won"]) /
+                 std::stod(row["a_first_serve_played"]);
+  double ssw_1 = std::stod(row["a_second_serve_won"]) /
+                 std::stod(row["a_second_serve_played"]);
+
+  double spw_1 = fsp_1 * fsw_1 + (1 - fsp_1) * ssw_1;
+
+  double fsp_2 = std::stod(row["b_first_serve_played"]) /
+                 std::stod(row["b_first_serve_total"]);
+  double fsw_2 = std::stod(row["b_first_serve_won"]) /
+                 std::stod(row["b_first_serve_played"]);
+  double ssw_2 = std::stod(row["b_second_serve_won"]) /
+                 std::stod(row["b_second_serve_played"]);
+
+  double spw_2 = fsp_2 * fsw_2 + (1 - fsp_2) * ssw_2;
+
+  result[Tools::ToLower(row["playerA"])] = spw_1;
+  result[Tools::ToLower(row["playerB"])] = spw_2;
+
+  std::string actual_score = row["score"];
+
+  int actual_games = 0;
+
+  if (actual_score.find("RET") != std::string::npos ||
+      actual_score.find("W/O") != std::string::npos) {
+    return std::make_pair(result, actual_games);
+  }
+
+  auto sets = Tools::Split(actual_score, ' ');
+  for (auto set : sets) {
+    Tools::Trim(set, ';');
+    set = set.substr(0, set.find("("));
+    auto elts = Tools::Split(set, '-');
+    actual_games += std::stoi(elts[0]) + std::stoi(elts[1]);
+  }
+
+  return std::make_pair(result, actual_games);
+}
+
+void run_model(std::string import_file, std::string output_name,
+               std::string tournament, std::string year, bool bo5,
                bool recalculate = false) {
   if (Tools::FileExists(output_name) && !recalculate) {
     std::cout << "Already calculated " << import_file
@@ -44,6 +135,22 @@ void run_model(std::string import_file, std::string output_name, bool bo5,
     IIDMCModel iid_model(cur_match.p1(), cur_match.p2(), bo5, iid_probs,
                          kSimulations);
 
+    // Run the actual result:
+    std::vector<Match> actual_matches;
+    std::pair<std::map<std::string, double>, int> lookup_result =
+        LookupSPW(tournament, year, cur_match.p1(), cur_match.p2());
+
+    auto actual_spw = lookup_result.first;
+    int actual_games = lookup_result.second;
+
+    if (actual_spw.size() > 0) {
+      std::cout << "Found actual result!" << std::endl;
+      IIDMCModel actual_result(Tools::ToLower(cur_match.p1()),
+                               Tools::ToLower(cur_match.p2()), bo5, actual_spw,
+                               kSimulations);
+      actual_matches = actual_result.matches();
+    }
+
     // Find the matches:
     const std::vector<Match> &matches = adj.matches();
     const std::vector<Match> &iid_matches = iid_model.matches();
@@ -59,6 +166,11 @@ void run_model(std::string import_file, std::string output_name, bool bo5,
     double average_games_iid = MatchStats::AverageMatchLength(iid_matches);
     double iid_win_prob = MatchStats::MatchWinProb(cur_match.p1(), iid_matches);
 
+    double actual_length_estimate =
+        (actual_matches.size() > 0)
+            ? MatchStats::AverageMatchLength(actual_matches)
+            : -1;
+
     // Write to CSV:
     std::map<std::string, std::string> csv_results;
 
@@ -70,14 +182,18 @@ void run_model(std::string import_file, std::string output_name, bool bo5,
     csv_results["average_games_iid"] = Tools::ToString(average_games_iid);
     csv_results["p_win_iid"] = Tools::ToString(iid_win_prob);
 
+    csv_results["actual_games_iid"] = Tools::ToString(actual_length_estimate);
+    csv_results["actual_games"] =
+        Tools::ToString(static_cast<unsigned int>(actual_games));
+
     csv_results["Player 1"] = cur_match.p1();
     csv_results["Player 2"] = cur_match.p2();
     csv_results["Match title"] = cur_match.match_title();
 
     csv_results["spw_iid_p1"] =
-        cur_match.ServeWinProbabilityIID(cur_match.p1());
+        Tools::ToString(cur_match.ServeWinProbabilityIID(cur_match.p1()));
     csv_results["spw_iid_p2"] =
-        cur_match.ServeWinProbabilityIID(cur_match.p2());
+        Tools::ToString(cur_match.ServeWinProbabilityIID(cur_match.p2()));
 
     w.WriteLine(csv_results);
 
@@ -93,85 +209,79 @@ void run_model(std::string import_file, std::string output_name, bool bo5,
               << "; non-IID: " << average_games << std::endl;
     std::cout << cur_match.p1() << " served first " << p1_served_first * 100
               << "% of the time." << std::endl;
-  }
-}
-
-void CheckIIDFromStats() {
-  std::string tournament = "US Open";
-  bool bo5 = true;
-  const unsigned int kNumSimulations = 1;
-
-  auto criterion = [tournament](const std::map<std::string, std::string> &m) {
-    return ((m.find("event_name"))->second).find(tournament) !=
-           std::string::npos;
-  };
-
-  auto matches_found =
-      CSVFile::FindInFile("python/matches_2014_atp.csv", criterion);
-
-  CSVWriter w(tournament + std::string(" with iid length prediction.csv"));
-
-  for (auto row : matches_found) {
-    std::string p1 = row["playerA"];
-    std::string p2 = row["playerB"];
-
-    // Calculate spw:
-    double fsp_1 = std::stod(row["a_first_serve_played"]) /
-                   std::stod(row["a_first_serve_total"]);
-    double fsw_1 = std::stod(row["a_first_serve_won"]) /
-                   std::stod(row["a_first_serve_played"]);
-    double ssw_1 = std::stod(row["a_second_serve_won"]) /
-                   std::stod(row["a_second_serve_played"]);
-
-    double spw_1 = fsp_1 * fsw_1 + (1 - fsp_1) * ssw_1;
-
-    double fsp_2 = std::stod(row["b_first_serve_played"]) /
-                   std::stod(row["b_first_serve_total"]);
-    double fsw_2 = std::stod(row["b_first_serve_won"]) /
-                   std::stod(row["b_first_serve_played"]);
-    double ssw_2 = std::stod(row["b_second_serve_won"]) /
-                   std::stod(row["b_second_serve_played"]);
-
-    double spw_2 = fsp_2 * fsw_2 + (1 - fsp_2) * ssw_2;
-
-    std::map<std::string, double> spws;
-
-    spws[p1] = spw_1;
-    spws[p2] = spw_2;
-
-    std::string actual_score = row["score"];
-
-    if (actual_score.find("RET") != std::string::npos ||
-        actual_score.find("W/O") != std::string::npos) {
-      continue;
-    }
-
-    std::cout << p1 << " " << p2 << " " << spw_1 << " " << spw_2 << std::endl;
-    std::cout << "Simulating..." << std::endl;
-    IIDMCModel iid_model(p1, p2, bo5, spws, kNumSimulations);
-    std::cout << "Finished simulating." << std::endl;
-    MatchStats::SummaryStats s = MatchStats::Summarise(iid_model.matches());
-
-    unsigned int actual_games = 0;
-
-    auto sets = Tools::Split(actual_score, ' ');
-    for (auto set : sets) {
-      Tools::Trim(set, ';');
-      set = set.substr(0, set.find("("));
-      auto elts = Tools::Split(set, '-');
-      actual_games += std::stoi(elts[0]) + std::stoi(elts[1]);
-    }
-
-    row["games"] = Tools::ToString(actual_games);
-    row["simulated_games"] = Tools::ToString(s.average_length);
-
-    w.WriteLine(row);
-
-    std::cout << "Simulated: " << s.average_length
-              << "; actual: " << actual_games << " in: " << actual_score
+    std::cout << "Actual length estimate is: " << actual_length_estimate
               << std::endl;
   }
 }
+
+/*void CheckIIDFromStats() {*/
+// std::string tournament = "US Open";
+// bool bo5 = true;
+// const unsigned int kNumSimulations = 1E4;
+
+// CSVWriter w(tournament + std::string(" with iid length prediction.csv"));
+
+// for (auto row : matches_found) {
+// std::string p1 = row["playerA"];
+// std::string p2 = row["playerB"];
+
+//// Calculate spw:
+// double fsp_1 = std::stod(row["a_first_serve_played"]) /
+// std::stod(row["a_first_serve_total"]);
+// double fsw_1 = std::stod(row["a_first_serve_won"]) /
+// std::stod(row["a_first_serve_played"]);
+// double ssw_1 = std::stod(row["a_second_serve_won"]) /
+// std::stod(row["a_second_serve_played"]);
+
+// double spw_1 = fsp_1 * fsw_1 + (1 - fsp_1) * ssw_1;
+
+// double fsp_2 = std::stod(row["b_first_serve_played"]) /
+// std::stod(row["b_first_serve_total"]);
+// double fsw_2 = std::stod(row["b_first_serve_won"]) /
+// std::stod(row["b_first_serve_played"]);
+// double ssw_2 = std::stod(row["b_second_serve_won"]) /
+// std::stod(row["b_second_serve_played"]);
+
+// double spw_2 = fsp_2 * fsw_2 + (1 - fsp_2) * ssw_2;
+
+// std::map<std::string, double> spws;
+
+// spws[p1] = spw_1;
+// spws[p2] = spw_2;
+
+// std::string actual_score = row["score"];
+
+// if (actual_score.find("RET") != std::string::npos ||
+// actual_score.find("W/O") != std::string::npos) {
+// continue;
+//}
+
+// std::cout << p1 << " " << p2 << " " << spw_1 << " " << spw_2 << std::endl;
+// std::cout << "Simulating..." << std::endl;
+// IIDMCModel iid_model(p1, p2, bo5, spws, kNumSimulations);
+// std::cout << "Finished simulating." << std::endl;
+// MatchStats::SummaryStats s = MatchStats::Summarise(iid_model.matches());
+
+// unsigned int actual_games = 0;
+
+// auto sets = Tools::Split(actual_score, ' ');
+// for (auto set : sets) {
+// Tools::Trim(set, ';');
+// set = set.substr(0, set.find("("));
+// auto elts = Tools::Split(set, '-');
+// actual_games += std::stoi(elts[0]) + std::stoi(elts[1]);
+//}
+
+// row["games"] = Tools::ToString(actual_games);
+// row["simulated_games"] = Tools::ToString(s.average_length);
+
+// w.WriteLine(row);
+
+// std::cout << "Simulated: " << s.average_length
+//<< "; actual: " << actual_games << " in: " << actual_score
+//<< std::endl;
+//}
+//}
 
 void run_iid_prediction() {
   std::ifstream i;
@@ -512,6 +622,75 @@ void ExportIIDLengthGrid() {
   o.close();
 }
 
+void ExportBPGrid() {
+  unsigned int grid_size = 100;
+
+  const unsigned int kMaxBPNo = 30;
+
+  std::ofstream o;
+
+  o.open("bp_grid_1e4_bo3.csv");
+
+  double grid_min = 0.01;
+  double grid_max = 0.99;
+
+  double step_size = (grid_max - grid_min) / grid_size;
+
+  const unsigned int kNumSimulations = 10000;
+
+  std::string p1 = "Player 1";
+  std::string p2 = "Player 2";
+
+  o << "spw_1"
+    << ","
+    << "spw_2";
+
+  for (unsigned int i = 0; i < kMaxBPNo; ++i) {
+    o << "," << Tools::ToString(i);
+  }
+
+  bool bo5 = false;
+
+  for (unsigned int i = 0; i < grid_size; ++i) {
+    double cur_spw_1 = i * step_size + grid_min;
+
+    for (unsigned int j = 0; j < grid_size; ++j) {
+      double cur_spw_2 = j * step_size + grid_min;
+      std::map<std::string, double> cur_spws;
+
+      cur_spws[p1] = cur_spw_1;
+      cur_spws[p2] = cur_spw_2;
+
+      IIDMCModel cur_simulations(p1, p2, bo5, cur_spws, kNumSimulations);
+
+      std::vector<Match> matches = cur_simulations.matches();
+
+      auto result = MatchStats::NumberBreakPointsHist(matches);
+
+      auto bpdist_p1 = result[p1];
+      auto bpdist_p2 = result[p2];
+
+      o << cur_spw_1 << "," << cur_spw_2;
+      std::cout << cur_spw_1 << "," << cur_spw_2;
+
+      for (unsigned int k = 0; k < kMaxBPNo; ++k) {
+        auto cur_it = bpdist_p2.find(k);
+        if (cur_it == bpdist_p2.end()) {
+          o << "," << 0;
+          std::cout << "," << 0;
+        } else {
+          o << "," << cur_it->second;
+          std::cout << "," << cur_it->second;
+        }
+      }
+
+      o << std::endl;
+      std::cout << std::endl;
+    }
+  }
+  o.close();
+}
+
 void verbose_test_run() {
   std::vector<ModelData> m = ModelData::ImportFromFile(
       "atp_points_predicted_player_no_tournament_name.csv");
@@ -573,6 +752,11 @@ void verbose_test_run_importance() {
 void CalculateNonIIDPredictionsATP() {
   bool bo5 = true;
 
+  std::vector<std::string> years{"2014", "2014", "2015", "2015"};
+
+  std::vector<std::string> tournaments{"Wimbledon", "US Open", "French Open",
+                                       "Australian Open"};
+
   std::vector<std::string> to_predict{
       "wimbledon_prediction_2014.csv", "usopen_prediction_2014.csv",
       "frenchopen_prediction_2015.csv", "ausopen_prediction_2015.csv"};
@@ -586,8 +770,9 @@ void CalculateNonIIDPredictionsATP() {
 
     std::string cur_prediction_file = to_predict[i];
 
-    run_model(cur_prediction_file, cur_output_name, bo5);
+    run_model(cur_prediction_file, cur_output_name, tournaments[i], years[i],
+              bo5, false);
   }
 }
 
-int main() { CheckIIDFromStats(); }
+int main() { ExportBPGrid(); }

@@ -26,6 +26,10 @@ class Set {
   const std::string &server() const;
   const std::string &returner() const;
   const std::pair<unsigned int, unsigned int> &final_score() const;
+
+  const std::vector<ServiceGame> &games() const;
+
+  const std::shared_ptr<Tiebreak> &tiebreak() const;
 };
 
 #endif

@@ -49,3 +49,38 @@ MatchStats::SummaryStats MatchStats::Summarise(
 
   return MatchStats::SummaryStats(spws, average_length, average_num_sets);
 }
+
+std::map<std::string, std::map<unsigned int, double>>
+MatchStats::NumberBreakPointsHist(const std::vector<Match> &matches) {
+  std::map<std::string, std::map<unsigned int, double>> result;
+
+  unsigned int num_matches = matches.size();
+
+  for (const Match &m : matches) {
+    std::pair<std::string, std::string> players = m.players();
+
+    for (auto p : std::vector<std::string>{players.first, players.second}) {
+      unsigned int bps = 0;
+      unsigned int won = 0;
+
+      std::vector<Point> points = m.GetServicePoints(p);
+
+      for (auto &point : points) {
+        if (point.is_break_point()) {
+          ++bps;
+          if (point.server_won()) {
+            ++won;
+          }
+        }
+      }
+      auto it = result[p].find(won);
+
+      if (it == result[p].end()) {
+        result[p][won] = 1 / static_cast<double>(num_matches);
+      } else {
+        (it->second) += 1 / static_cast<double>(num_matches);
+      }
+    }
+  }
+  return result;
+}

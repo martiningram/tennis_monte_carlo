@@ -33,3 +33,5 @@ std::ostream &operator<<(std::ostream &o, const ServiceGame &g) {
     << g.final_score_.first << "-" << g.final_score_.second;
   return o;
 }
+
+const std::vector<Point> &ServiceGame::points() const { return points_; }

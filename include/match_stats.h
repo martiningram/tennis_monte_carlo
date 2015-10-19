@@ -34,6 +34,9 @@ double AverageNumberOfSets(const std::vector<Match> &matches);
 double PlayerServedFirst(std::string player, const std::vector<Match> &matches);
 
 SummaryStats Summarise(const std::vector<Match> &matches);
+
+std::map<std::string, std::map<unsigned int, double>> NumberBreakPointsHist(
+    const std::vector<Match> &matches);
 }
 
 #endif

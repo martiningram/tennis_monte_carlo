@@ -57,3 +57,24 @@ std::string Match::server_at_start() const { return server_; }
 std::pair<std::string, std::string> Match::players() const {
   return std::make_pair(server_, returner_);
 }
+
+std::vector<Point> Match::GetServicePoints(std::string player) const {
+  std::vector<Point> pts;
+  for (const Set &s : sets_) {
+    for (const ServiceGame &g : s.games()) {
+      if (!(g.server() == player)) {
+        continue;
+      }
+      const std::vector<Point> &cur_pts = g.points();
+      for (const Point &pt : cur_pts) {
+        pts.push_back(pt);
+      }
+    }
+    if (s.tiebreak()) {
+      for (const Point &pt : s.tiebreak()->points()) {
+        pts.push_back(pt);
+      }
+    }
+  }
+  return pts;
+}

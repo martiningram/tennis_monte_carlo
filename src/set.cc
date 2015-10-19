@@ -47,3 +47,7 @@ std::string Set::last_server() const {
 const std::string &Set::server() const { return server_; }
 
 const std::string &Set::returner() const { return returner_; }
+
+const std::vector<ServiceGame> &Set::games() const { return games_; }
+
+const std::shared_ptr<Tiebreak> &Set::tiebreak() const { return tiebreak_; }

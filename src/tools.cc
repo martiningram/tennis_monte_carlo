@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include "exceptions.h"
 
 std::string& Tools::Trim(std::string& str, char c) {
@@ -60,4 +61,21 @@ std::vector<std::string> Tools::Split(std::string s, char on) {
   }
 
   return result;
+}
+
+std::vector<std::map<std::string, std::string>> Tools::Filter(
+    const std::vector<std::map<std::string, std::string>>& rows,
+    std::function<bool(const std::map<std::string, std::string>&)> f) {
+  std::vector<std::map<std::string, std::string>> filtered;
+  for (auto const& row : rows) {
+    if (f(row)) {
+      filtered.emplace_back(row);
+    }
+  }
+  return filtered;
+}
+
+std::string Tools::ToLower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
 }

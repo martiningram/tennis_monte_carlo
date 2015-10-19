@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <functional>
 
 namespace Tools {
 // Trims a string of the character c
@@ -14,6 +16,10 @@ bool FileExists(std::string filename);
 std::string ToString(double d);
 std::string ToString(unsigned int i);
 std::vector<std::string> Split(std::string s, char on);
+std::string ToLower(std::string s);
+std::vector<std::map<std::string, std::string>> Filter(
+    const std::vector<std::map<std::string, std::string>>&,
+    std::function<bool(const std::map<std::string, std::string>&)>);
 }
 
 #endif
