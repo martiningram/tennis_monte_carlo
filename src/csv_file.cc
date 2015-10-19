@@ -4,12 +4,17 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <cstdlib>
 #include <tools.h>
 
 CSVFile::CSVFile(std::string csv_file) {
   // Open:
   i_.open(csv_file);
-  assert(i_.good());
+
+  if (!(i_.good())) {
+    std::cout << "Could not open " << csv_file << "!" << std::endl;
+    std::exit(1);
+  }
 
   // Read headers:
   std::string headers, cur_header;

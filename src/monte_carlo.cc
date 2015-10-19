@@ -42,7 +42,7 @@ std::pair<std::map<std::string, double>, int> LookupSPW(
   std::string filename;
 
   if (year == "2015") {
-    filename = "python/matches_2015_loop.csv";
+    filename = "python/matches_loop_2015.csv";
   } else if (year == "2014") {
     filename = "python/matches_2014_atp.csv";
   } else {
@@ -752,6 +752,8 @@ void verbose_test_run_importance() {
 void CalculateNonIIDPredictionsATP() {
   bool bo5 = true;
 
+  std::string data_folder = "data/model_predictions/";
+
   std::vector<std::string> years{"2014", "2014", "2015", "2015"};
 
   std::vector<std::string> tournaments{"Wimbledon", "US Open", "French Open",
@@ -765,14 +767,15 @@ void CalculateNonIIDPredictionsATP() {
                                  "frenchopen2015", "ausopen2015"};
 
   for (unsigned int i = 0; i < to_predict.size(); ++i) {
-    std::string cur_output_name = std::string("iid_vs_non_iid_prediction_") +
+    std::string cur_output_name = data_folder +
+                                  std::string("iid_vs_non_iid_prediction_") +
                                   names[i] + std::string(".csv");
 
-    std::string cur_prediction_file = to_predict[i];
+    std::string cur_prediction_file = data_folder + to_predict[i];
 
     run_model(cur_prediction_file, cur_output_name, tournaments[i], years[i],
               bo5, false);
   }
 }
 
-int main() { ExportBPGrid(); }
+int main() { CalculateNonIIDPredictionsATP(); }
